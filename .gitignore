@@ -1,0 +1,56 @@
+# Dependency directories
+node_modules/
+jspm_packages/
+web_modules/
+
+# Build outputs
+dist/
+build/
+.cache/
+.parcel-cache/
+
+# Python virtual environments
+.venv/
+venv/
+ENV/
+env/
+pyvenv.cfg
+.Python
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+
+# Environment files and keys
+.env
+.env.local
+.env.*.local
+*.env
+*.pem
+*.key
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+package-lock.json
+
+
+# OS & Editor configurations
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.local-browsers/
