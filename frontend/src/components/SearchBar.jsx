@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { reverseGeocode } from '../utils/geocode';
 
 const CITIES = [
   'Mumbai',
@@ -16,66 +17,12 @@ const PLACEHOLDERS = [
   'Try: Amul Butter 500g',
   'Try: Surf Excel 1kg'
 ];
-const QUICKSEARCH = ['🥛 Dairy', '🌾 Atta & Rice', '🫙 Oils', '🥤 Beverages']
+const QUICKSEARCH = ['🥛 Dairy', '🌾 Atta & Rice', '🫙 Oils', '🥤 Beverages'];
 
-// Reverse geocoding helper using client-side free APIs (BigDataCloud with Nominatim fallback)
-const reverseGeocode = async (lat, lon) => {
-  try {
-    const res = await fetch(
-      `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`
-    );
-    if (res.ok) {
-      const data = await res.json();
-      const locality = data.locality || '';
-      const city = data.city || data.principalSubdivision || '';
-      if (locality && city) {
-        return `${locality}, ${city}`;
-      } else if (city) {
-        return city;
-      }
-    }
-  } catch (err) {
-    console.warn('BigDataCloud geocoding failed, trying Nominatim fallback...', err);
-  }
-
-  try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`,
-      {
-        headers: {
-          'Accept-Language': 'en'
-        }
-      }
-    );
-    if (res.ok) {
-      const data = await res.json();
-      const address = data.address || {};
-      const suburb = address.suburb || address.neighbourhood || address.village || address.subdivision || '';
-      const city = address.city || address.town || address.county || address.state || '';
-      if (suburb && city) {
-        return `${suburb}, ${city}`;
-      } else if (city) {
-        return city;
-      } else if (data.display_name) {
-        const parts = data.display_name.split(',');
-        if (parts.length > 1) {
-          return `${parts[0].trim()}, ${parts[1].trim()}`;
-        }
-        return parts[0].trim();
-      }
-    }
-  } catch (err) {
-    console.error('Nominatim reverse geocoding failed...', err);
-  }
-
-  return null;
-};
-
-export default function SearchBar({ onSearch, currentCity, currentQuery, isLoading }) {
+function SearchBar({ onSearch, currentCity, currentQuery, isLoading }) {
   const [query, setQuery] = useState(currentQuery || '');
   const [city, setCity] = useState(currentCity || 'Mumbai');
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
-  const [fadeClass, setFadeClass] = useState(true);
 
   // Geolocation UI states
   const [isOpen, setIsOpen] = useState(false);
@@ -84,14 +31,10 @@ export default function SearchBar({ onSearch, currentCity, currentQuery, isLoadi
   const [detectedViaGeo, setDetectedViaGeo] = useState(false);
   const dropdownRef = useRef(null);
 
-  // Rotate placeholders every 3.5 seconds with a subtle fade animation
+  // Rotate placeholders every 3.5 seconds
   useEffect(() => {
     const interval = setInterval(() => {
-      setFadeClass(false);
-      setTimeout(() => {
-        setPlaceholderIndex((prev) => (prev + 1) % PLACEHOLDERS.length);
-        setFadeClass(true);
-      }, 300); // match fade out
+      setPlaceholderIndex((prev) => (prev + 1) % PLACEHOLDERS.length);
     }, 3500);
 
     return () => clearInterval(interval);
@@ -131,15 +74,15 @@ export default function SearchBar({ onSearch, currentCity, currentQuery, isLoadi
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleCitySelect = (selectedCity) => {
+  const handleCitySelect = useCallback((selectedCity) => {
     setCity(selectedCity);
     setDetectedViaGeo(false);
     setIsOpen(false);
     localStorage.setItem('detected_location', selectedCity);
     localStorage.setItem('detected_via_geo', 'false');
-  };
+  }, []);
 
-  const handleDetectLocation = () => {
+  const handleDetectLocation = useCallback(() => {
     if (!navigator.geolocation) {
       setLocationError("Geolocation is not supported by your browser.");
       return;
@@ -188,70 +131,45 @@ export default function SearchBar({ onSearch, currentCity, currentQuery, isLoadi
       },
       geoOptions
     );
-  };
+  }, []);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = useCallback((e) => {
     if (e) e.preventDefault();
     if (!query.trim() || isLoading) return;
     onSearch(query.trim(), city);
-  };
+  }, [query, city, isLoading, onSearch]);
 
-  const handleChipClick = (categorySearch) => {
+  const handleChipClick = useCallback((categorySearch) => {
     if (isLoading) return;
     // Strip the emoji from chip text for the API search query
     const searchQuery = categorySearch.replace(/[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF]/g, '').trim();
     setQuery(searchQuery);
     onSearch(searchQuery, city);
-  };
+  }, [city, isLoading, onSearch]);
 
   return (
-    <section className="hero-container" style={{
-      padding: '60px 24px',
-      textAlign: 'center',
-      borderBottom: '1px solid var(--border)'
-    }}>
+    <section className="hero-container hero-section">
       <div className="hero-grain" />
 
-      <div style={{ maxWidth: '720px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
+      <div className="hero-content">
         {/* Main Heading */}
-        <h1 style={{
-          fontSize: '38px',
-          color: 'var(--brand-dark)',
-          marginBottom: '12px',
-          lineHeight: '1.2'
-        }}>
+        <h1 className="hero-title">
           Compare grocery prices across platforms
         </h1>
 
         {/* Subtitle */}
-        <p style={{
-          fontSize: '16px',
-          color: 'var(--text-muted)',
-          marginBottom: '32px',
-          fontWeight: 500
-        }}>
+        <p className="hero-subtitle">
           Search once. We check InstaMART now, Zepto & Blinkit soon.
         </p>
 
         {/* Pill-shaped Search Form */}
-        <form onSubmit={handleSubmit} className="search-pill" style={{
-          display: 'flex',
-          alignItems: 'center',
-          borderRadius: 'var(--radius-pill)',
-          padding: '4px',
-          height: '58px',
-          marginBottom: '24px'
-        }}>
+        <form onSubmit={handleSubmit} className="search-pill">
           {/* Custom Location Selection */}
-          <div ref={dropdownRef} className="location-selector" style={{
-            paddingLeft: '16px',
-            paddingRight: '12px',
-            borderRight: '1px solid var(--border)'
-          }}>
+          <div ref={dropdownRef} className="location-selector">
             <button
               type="button"
               onClick={() => setIsOpen(!isOpen)}
-              className={`location-trigger ${detectedViaGeo ? 'detected' : ''}`}
+              className={`location-dropdown-btn ${detectedViaGeo ? 'detected' : ''}`}
               title={city}
             >
               <span role="img" aria-label="city pin" style={{ fontSize: '15px' }}>
@@ -284,10 +202,7 @@ export default function SearchBar({ onSearch, currentCity, currentQuery, isLoadi
                       <span>Locating...</span>
                     </>
                   ) : (
-                    <>
-                      {/* <span role="img" aria-label="detect icon">🎯</span> */}
-                      <span>Detect my location</span>
-                    </>
+                    <span>Detect my location</span>
                   )}
                 </button>
 
@@ -330,43 +245,14 @@ export default function SearchBar({ onSearch, currentCity, currentQuery, isLoadi
             onChange={(e) => setQuery(e.target.value)}
             disabled={isLoading}
             placeholder={PLACEHOLDERS[placeholderIndex]}
-            style={{
-              flex: 1,
-              border: 'none',
-              outline: 'none',
-              padding: '0 16px',
-              fontFamily: 'var(--font-sans)',
-              fontSize: '15px',
-              color: 'var(--text-primary)',
-              transition: 'opacity 0.2s ease',
-              width: '100%'
-            }}
+            className="search-input"
           />
 
           {/* Search Action Button */}
           <button
             type="submit"
             disabled={isLoading || !query.trim()}
-            style={{
-              backgroundColor: 'var(--brand-mid)',
-              color: '#FFFFFF',
-              border: 'none',
-              borderRadius: 'var(--radius-pill)',
-              height: '50px',
-              padding: '0 24px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              fontFamily: 'var(--font-sans)',
-              fontSize: '15px',
-              fontWeight: 600,
-              cursor: (!query.trim() || isLoading) ? 'not-allowed' : 'pointer',
-              opacity: (!query.trim() || isLoading) ? 0.7 : 1,
-              transition: 'transform 0.1s ease, background-color 0.2s ease'
-            }}
-            onMouseDown={(e) => { if (query.trim() && !isLoading) e.currentTarget.style.transform = 'scale(0.97)'; }}
-            onMouseUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+            className="btn-search"
           >
             {/* Magnifying Glass Icon */}
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -377,13 +263,7 @@ export default function SearchBar({ onSearch, currentCity, currentQuery, isLoadi
         </form>
 
         {/* Suggestion Chips */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          gap: '8px',
-          flexWrap: 'wrap'
-        }}>
+        <div className="suggestion-chips-container">
           <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 500, marginRight: '4px' }}>Quick search:</span>
           {QUICKSEARCH.map((chip) => (
             <button
@@ -391,20 +271,7 @@ export default function SearchBar({ onSearch, currentCity, currentQuery, isLoadi
               type="button"
               onClick={() => handleChipClick(chip)}
               disabled={isLoading}
-              style={{
-                border: '1px solid rgba(13, 79, 47, 0.25)',
-                backgroundColor: 'rgba(13, 79, 47, 0.03)',
-                color: 'var(--brand-dark)',
-                fontFamily: 'var(--font-sans)',
-                fontSize: '13px',
-                fontWeight: 600,
-                padding: '6px 14px',
-                borderRadius: 'var(--radius-pill)',
-                cursor: isLoading ? 'not-allowed' : 'pointer',
-                transition: 'all 0.2s ease'
-              }}
-              onMouseEnter={(e) => { if (!isLoading) { e.currentTarget.style.backgroundColor = 'var(--brand-dark)'; e.currentTarget.style.color = '#FFFFFF'; } }}
-              onMouseLeave={(e) => { if (!isLoading) { e.currentTarget.style.backgroundColor = 'rgba(13, 79, 47, 0.03)'; e.currentTarget.style.color = 'var(--brand-dark)'; } }}
+              className="chip-btn"
             >
               {chip}
             </button>
@@ -414,3 +281,5 @@ export default function SearchBar({ onSearch, currentCity, currentQuery, isLoadi
     </section>
   );
 }
+
+export default React.memo(SearchBar);

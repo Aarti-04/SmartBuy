@@ -1,7 +1,7 @@
 import React from 'react';
 import ProductCard from './ProductCard';
 
-export default function ProductGrid({
+function ProductGrid({
   products,
   onAddToCompare,
   onRemoveFromCompare,
@@ -26,3 +26,5 @@ export default function ProductGrid({
     </div>
   );
 }
+
+export default React.memo(ProductGrid);

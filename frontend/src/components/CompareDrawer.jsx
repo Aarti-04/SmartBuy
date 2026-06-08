@@ -1,84 +1,51 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { trackRedirect } from '../utils/analytics';
 
-export default function CompareDrawer({
+function CompareDrawer({
   compareList,
   onRemoveFromCompare,
   onClearAll,
   onClose
 }) {
+  const handleProductRedirect = useCallback((product) => {
+    trackRedirect({
+      productName: product.name,
+      platform: product.platform,
+      price: product.price,
+      city: product.city || 'Mumbai'
+    });
+    window.open(product.platformUrl, '_blank', 'noopener,noreferrer');
+  }, []);
+
   if (!compareList || compareList.length === 0) return null;
 
   return (
-    <div className="animate-slide-up" style={{
-      position: 'fixed',
-      bottom: 0,
-      left: 0,
-      right: 0,
-      backgroundColor: '#FFFFFF',
-      borderTop: '2px solid var(--brand-dark)',
-      boxShadow: '0 -10px 30px rgba(13,79,47,0.15)',
-      zIndex: 1000,
-      padding: '24px',
-      maxHeight: '400px',
-      overflowY: 'auto'
-    }}>
-      <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
+    <div className="compare-drawer-container animate-slide-up">
+      <div className="compare-drawer-inner">
         
         {/* Header Row */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '16px',
-          borderBottom: '1px solid var(--border)',
-          paddingBottom: '12px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '20px' }}>📊</span>
-            <h3 style={{
-              fontFamily: 'var(--font-heading)',
-              fontSize: '18px',
-              color: 'var(--brand-dark)'
-            }}>
+        <div className="compare-drawer-header">
+          <div className="compare-drawer-title-container">
+            <span className="compare-drawer-title-emoji">📊</span>
+            <h3 className="compare-drawer-title">
               Price Comparison ({compareList.length}/3 items)
             </h3>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div className="compare-drawer-actions">
             <button
+              type="button"
               onClick={onClearAll}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#EF5350',
-                fontFamily: 'var(--font-sans)',
-                fontSize: '14px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                textDecoration: 'underline'
-              }}
+              className="btn-clear-all"
             >
               Clear All
             </button>
             
             {/* Close Cross */}
             <button
+              type="button"
               onClick={onClose}
-              style={{
-                background: '#F3F4F6',
-                border: 'none',
-                borderRadius: '50%',
-                width: '32px',
-                height: '32px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '16px',
-                color: 'var(--text-muted)',
-                fontWeight: 'bold',
-                cursor: 'pointer'
-              }}
+              className="btn-close-drawer"
             >
               ✕
             </button>
@@ -86,36 +53,28 @@ export default function CompareDrawer({
         </div>
 
         {/* Table Container */}
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{
-            width: '100%',
-            borderCollapse: 'collapse',
-            textAlign: 'left',
-            fontFamily: 'var(--font-sans)',
-            fontSize: '14px'
-          }}>
+        <div className="compare-table-wrapper">
+          <table className="compare-table">
             <thead>
               <tr style={{ borderBottom: '2px solid var(--border)' }}>
-                <th style={{ padding: '10px', color: 'var(--text-muted)', fontWeight: 600 }}>Product Details</th>
-                <th style={{ padding: '10px', color: 'var(--brand-dark)', fontWeight: 700 }}>Swiggy InstaMART</th>
-                <th style={{ padding: '10px', color: '#9CA3AF', fontWeight: 600 }}>Zepto 🔒</th>
-                <th style={{ padding: '10px', color: '#9CA3AF', fontWeight: 600 }}>Blinkit 🔒</th>
-                <th style={{ padding: '10px', width: '60px' }}></th>
+                <th className="compare-table-header-details">Product Details</th>
+                <th className="compare-table-header-instamart">Swiggy InstaMART</th>
+                <th className="compare-table-header-locked">Zepto 🔒</th>
+                <th className="compare-table-header-locked">Blinkit 🔒</th>
+                <th style={{ width: '60px' }}></th>
               </tr>
             </thead>
             <tbody>
               {compareList.map((product) => (
-                <tr key={product.id} style={{ borderBottom: '1px solid var(--border)', height: '70px' }}>
+                <tr key={product.id} className="compare-table-row">
                   
                   {/* Name and Qty */}
-                  <td style={{ padding: '10px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{
-                        fontSize: '22px',
-                        padding: '4px',
-                        background: product.gradient,
-                        borderRadius: '6px'
-                      }}>
+                  <td>
+                    <div className="product-cell-detail">
+                      <span
+                        className="product-cell-emoji"
+                        style={{ background: product.gradient }}
+                      >
                         {product.emoji}
                       </span>
                       <div>
@@ -123,63 +82,31 @@ export default function CompareDrawer({
                           href={product.platformUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          onClick={() => trackRedirect({
-                            productName: product.name,
-                            platform: product.platform,
-                            price: product.price,
-                            city: product.city || 'Mumbai'
-                          })}
-                          style={{
-                            fontWeight: 700,
-                            color: 'var(--brand-dark)',
-                            textDecoration: 'none',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '2px'
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleProductRedirect(product);
                           }}
-                          onMouseEnter={(e) => { e.currentTarget.style.textDecoration = 'underline'; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.textDecoration = 'none'; }}
+                          className="product-cell-name"
                         >
                           {product.name} ↗
                         </a>
-                        <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Qty: {product.quantity}</div>
+                        <div className="product-cell-qty">Qty: {product.quantity}</div>
                       </div>
                     </div>
                   </td>
 
                   {/* InstaMART Price */}
-                  <td style={{ padding: '10px', fontWeight: 700, color: 'var(--brand-dark)', fontSize: '16px', verticalAlign: 'middle' }}>
-                    <div>
+                  <td style={{ verticalAlign: 'middle' }}>
+                    <div className="price-cell-value">
                       <span>₹{product.price}</span>
-                      <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 500, marginLeft: '4px' }}>
+                      <span className="price-cell-unit">
                         ({product.unitPrice})
                       </span>
                     </div>
                     <button
-                      onClick={() => {
-                        trackRedirect({
-                          productName: product.name,
-                          platform: product.platform,
-                          price: product.price,
-                          city: product.city || 'Mumbai'
-                        });
-                        window.open(product.platformUrl, '_blank', 'noopener,noreferrer');
-                      }}
-                      style={{
-                        marginTop: '4px',
-                        backgroundColor: 'var(--brand-accent)',
-                        color: 'var(--brand-dark)',
-                        border: 'none',
-                        borderRadius: '4px',
-                        padding: '2px 8px',
-                        fontSize: '11px',
-                        fontWeight: 800,
-                        cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '2px',
-                        boxShadow: '0 1px 4px rgba(37,211,102,0.15)'
-                      }}
+                      type="button"
+                      onClick={() => handleProductRedirect(product)}
+                      className="btn-buy-drawer"
                     >
                       Buy ↗
                     </button>
@@ -187,7 +114,7 @@ export default function CompareDrawer({
 
                   {/* Zepto Locked */}
                   <td
-                    style={{ padding: '10px', color: '#9CA3AF', fontStyle: 'italic', fontSize: '12px', verticalAlign: 'middle' }}
+                    className="coming-soon-cell"
                     title="We'll redirect you to Zepto when integrated"
                   >
                     <span>Coming Soon</span>
@@ -195,24 +122,19 @@ export default function CompareDrawer({
 
                   {/* Blinkit Locked */}
                   <td
-                    style={{ padding: '10px', color: '#9CA3AF', fontStyle: 'italic', fontSize: '12px', verticalAlign: 'middle' }}
+                    className="coming-soon-cell"
                     title="We'll redirect you to Blinkit when integrated"
                   >
                     <span>Coming Soon</span>
                   </td>
 
                   {/* Remove Action Button */}
-                  <td style={{ padding: '10px', textAlign: 'right', verticalAlign: 'middle' }}>
+                  <td style={{ textAlign: 'right', verticalAlign: 'middle' }}>
                     <button
+                      type="button"
                       onClick={() => onRemoveFromCompare(product)}
                       title="Remove product"
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        color: '#EF5350',
-                        fontSize: '18px',
-                        cursor: 'pointer'
-                      }}
+                      className="btn-remove-drawer"
                     >
                       🗑️
                     </button>
@@ -225,14 +147,7 @@ export default function CompareDrawer({
         </div>
 
         {/* Footer disclaimer */}
-        <div style={{
-          textAlign: 'center',
-          fontSize: '11px',
-          color: 'var(--text-muted)',
-          marginTop: '16px',
-          borderTop: '1px solid var(--border)',
-          paddingTop: '12px'
-        }}>
+        <div className="compare-footer-disclaimer">
           💡 BasketAI compares prices only. All purchases happen directly on the platform's website. We don't store your order or payment data.
         </div>
 
@@ -240,3 +155,5 @@ export default function CompareDrawer({
     </div>
   );
 }
+
+export default React.memo(CompareDrawer);
