@@ -100,8 +100,8 @@ SmartBuy follows a modular, agent-driven architecture that separates AI reasonin
 ### Clone the Repository
 
 ```bash
-git clone https://github.com/Aarti-04/shoppingAI-agent.git
-cd shoppingAI-agent
+git clone https://github.com/Aarti-04/SmartBuy.git
+cd SmartBuy
 ```
 
 ### Configure Environment Variables
