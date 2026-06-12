@@ -26,8 +26,8 @@ export function parseAgentResponse(text) {
   const lines = text.split('\n');
   const products = [];
   
-  // Matches "1. Name | ₹24 | 500 ml [ | URL ]" (handles optional URL as fourth field)
-  const regex = /^\d+\.\s*(.+?)\s*\|\s*(?:₹|Rs\.?)\s*([\d,.]+)\s*\|\s*(.+?)(?:\s*\|\s*(https?:\/\/\S+))?$/i;
+  // Matches "1. Name | ₹24 | 500 ml [ | URL ]" (handles optional currency and optional URL as fourth field)
+  const regex = /^\d+\.\s*(.+?)\s*\|\s*(?:(?:₹|Rs\.?)\s*)?([\d,.]+)\s*\|\s*(.+?)(?:\s*\|\s*(https?:\/\/\S+))?$/i;
 
   lines.forEach((line, index) => {
     const match = line.trim().match(regex);
