@@ -26,49 +26,112 @@ export function parseAgentResponse(text) {
   const lines = text.split('\n');
   const products = [];
   
-  // Matches "1. Name | ₹24 | 500 ml [ | URL ]" (handles optional currency and optional URL as fourth field)
-  const regex = /^\d+\.\s*(.+?)\s*\|\s*(?:(?:₹|Rs\.?)\s*)?([\d,.]+)\s*\|\s*(.+?)(?:\s*\|\s*(https?:\/\/\S+))?$/i;
+  // Matches optional "1. " / "1) " at the start, then "Name | ₹24 | 500 ml [ | URL [ | ImageURL ] ]"
+  const regex = /^(?:\d+[\.\)]\s*)?(.+?)\s*\|\s*(?:(?:₹|Rs\.?)\s*)?([\d,.]+)\s*\|\s*(.+?)(?:\s*\|\s*(https?:\/\/\S+))?(?:\s*\|\s*(https?:\/\/\S+))?$/i;
+
+  let currentPlatform = 'instamart';
 
   lines.forEach((line, index) => {
-    const match = line.trim().match(regex);
+    const trimmed = line.trim();
+    const upperLine = trimmed.toUpperCase();
+    
+    // Detect platform headers
+    if (upperLine.includes('INSTAMART') && !/^\d+[\.\)]/.test(trimmed)) {
+      currentPlatform = 'instamart';
+      return;
+    }
+    if (upperLine.includes('ZEPTO') && !/^\d+[\.\)]/.test(trimmed)) {
+      currentPlatform = 'zepto';
+      return;
+    }
+
+    const match = trimmed.match(regex);
     if (match) {
       const name = match[1].trim();
       const priceVal = parseFloat(match[2].replace(/,/g, ''));
       const quantity = match[3].trim();
       const directUrl = match[4] ? match[4].trim() : null;
+      const imageUrl = match[5] ? match[5].trim() : null;
       
       const category = detectCategory(name);
       const catConfig = getCategoryConfig(category);
       
       const unitPriceStr = calculateUnitPrice(priceVal, quantity);
-      const platformUrl = (directUrl && directUrl.startsWith('http')) ? directUrl : generatePlatformUrl(name, 'instamart');
+      const platformUrl = (directUrl && directUrl.startsWith('http')) 
+        ? directUrl 
+        : generatePlatformUrl(name, currentPlatform);
 
       products.push({
-        id: `prod-${index}-${name.replace(/\s+/g, '-').toLowerCase()}`,
+        id: `prod-${index}-${name.replace(/\s+/g, '-').toLowerCase()}-${currentPlatform}`,
         name,
         price: priceVal,
         quantity,
-        platform: 'instamart',
+        platform: currentPlatform,
         category,
         emoji: catConfig.emoji,
         gradient: catConfig.gradient,
         unitPrice: unitPriceStr,
         platformUrl,
-        rawLine: line.trim()
+        imageUrl,
+        rawLine: trimmed,
+        isBestPrice: false,
+        platformWinner: false
       });
     }
   });
 
   if (products.length > 0) {
-    // Find the cheapest price in the list
-    const prices = products.map(p => p.price);
-    const minPrice = Math.min(...prices);
+    // 1. Group products by normalized name (fuzzy match on first 3 words)
+    const groups = {};
     
-    // Set isBestPrice flag on the cheapest item(s)
+    const getFuzzyKey = (nameStr) => {
+      return nameStr.toLowerCase()
+        .replace(/[^a-z0-9\s]/g, '')
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 3)
+        .join(' ');
+    };
+
     products.forEach(p => {
-      if (p.price === minPrice) {
-        p.isBestPrice = true;
+      const key = getFuzzyKey(p.name) || 'other';
+      if (!groups[key]) {
+        groups[key] = [];
       }
+      groups[key].push(p);
+    });
+
+    // 2. Process each group to find the best price and platform winner
+    Object.values(groups).forEach(group => {
+      const minPrice = Math.min(...group.map(p => p.price));
+      const hasInstamart = group.some(p => p.platform === 'instamart');
+      const hasZepto = group.some(p => p.platform === 'zepto');
+      
+      const imProd = group.find(p => p.platform === 'instamart');
+      const zProd = group.find(p => p.platform === 'zepto');
+
+      group.forEach(p => {
+        if (imProd) {
+          p.instamartPrice = imProd.price;
+          p.instamartUrl = imProd.platformUrl;
+          p.instamartImage = imProd.imageUrl;
+        }
+        if (zProd) {
+          p.zeptoPrice = zProd.price;
+          p.zeptoUrl = zProd.platformUrl;
+          p.zeptoImage = zProd.imageUrl;
+        }
+
+        if (p.price === minPrice) {
+          p.isBestPrice = true;
+          if (hasInstamart && hasZepto) {
+            p.platformWinner = true;
+          }
+        } else {
+          p.isBestPrice = false;
+          p.platformWinner = false;
+        }
+      });
     });
   }
 

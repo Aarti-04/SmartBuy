@@ -606,27 +606,6 @@ h1, h2, h3, h4, h5, h6 {
   background-color: var(--bg-card);
 }
 
-/* Buy Cheapest Button */
-.btn-buy-cheapest {
-  background-color: var(--brand-dark);
-  color: #FFFFFF;
-  border: none;
-  border-radius: var(--radius-pill);
-  padding: 6px 14px;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  box-shadow: 0 2px 6px rgba(13,79,47,0.15);
-  transition: background-color 0.15s ease;
-}
-
-.btn-buy-cheapest:hover {
-  background-color: var(--brand-mid);
-}
-
 /* Error Boundary */
 .error-boundary-container {
   padding: 48px 24px;
@@ -1547,5 +1526,26 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 11px;
   color: #888;
   line-height: 1.4;
+}
+
+/* Compare View Grid Layout & Responsive Stacking */
+.compare-row-sides {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 20px;
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  .compare-row-sides {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+  .compare-col-savings {
+    order: -1;
+    padding: 8px !important;
+    border-bottom: 1px dashed var(--border);
+    padding-bottom: 16px !important;
+  }
 }
 

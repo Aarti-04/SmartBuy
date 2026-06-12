@@ -159,7 +159,7 @@ function SearchBar({ onSearch, currentCity, currentQuery, isLoading }) {
 
         {/* Subtitle */}
         <p className="hero-subtitle">
-          Search once. We check InstaMART now, Zepto & Blinkit soon.
+          Search once. We check InstaMART & Zepto now, Blinkit soon.
         </p>
 
         {/* Pill-shaped Search Form */}

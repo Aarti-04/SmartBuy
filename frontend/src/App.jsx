@@ -6,7 +6,6 @@ import CompareDrawer from './components/CompareDrawer';
 import AgentPanel from './components/AgentPanel';
 import SkeletonLoader from './components/SkeletonLoader';
 import ErrorBoundary from './components/ErrorBoundary';
-import BuyCheapestButton from './components/BuyCheapestButton';
 import { parseAgentResponse } from './utils/parseResponse';
 
 // ================= MODULE SCOPED CONSTANTS =================
@@ -97,6 +96,17 @@ function MainApp() {
   const [bannerDismissed, setBannerDismissed] = useState(
     !!localStorage.getItem('basketai_redirect_notice_dismissed')
   );
+  const [devMode, setDevMode] = useState(() => {
+    return localStorage.getItem('basketai_dev_mode') === 'true';
+  });
+
+  const handleToggleDevMode = useCallback(() => {
+    setDevMode(prev => {
+      const next = !prev;
+      localStorage.setItem('basketai_dev_mode', String(next));
+      return next;
+    });
+  }, []);
 
   // Backend Health Checks
   const checkHealth = useCallback(async () => {
@@ -193,7 +203,7 @@ function MainApp() {
         </div>
       )}
 
-      <Navbar isOnline={isOnline} />
+      <Navbar isOnline={isOnline} devMode={devMode} onToggleDevMode={handleToggleDevMode} />
 
       <SearchBar
         onSearch={handleSearch}
@@ -244,14 +254,12 @@ function MainApp() {
                   Results for "{state.query}" in {state.city}
                 </h2>
                 <p className="results-subtitle">
-                  Swiggy Instamart quick-commerce scrape results
+                  Swiggy Instamart & Zepto quick-commerce scrape results
                 </p>
               </div>
 
               {/* Badges and Buy cheapest CTA */}
               <div className="results-badges">
-                <BuyCheapestButton results={state.results} city={state.city} />
-
                 <div className="badge-instamart-products">
                   <span className="badge-instamart-dot" />
                   <span className="badge-instamart-text">
@@ -278,7 +286,7 @@ function MainApp() {
               No products found for "{state.query}"
             </h3>
             <p className="empty-state-text">
-              We checked InstaMART in {state.city}. Try searching for common grocery goods or brands.
+              We checked InstaMART & Zepto in {state.city}. Try searching for common grocery goods or brands.
             </p>
 
             <div className="empty-state-suggestions">
@@ -308,16 +316,19 @@ function MainApp() {
           </div>
         )}
 
-        <AgentPanel
-          history={state.queryHistory}
-          rawLog={lastRawLog}
-        />
+        {devMode && (
+          <AgentPanel
+            history={state.queryHistory}
+            rawLog={lastRawLog}
+          />
+        )}
 
       </main>
 
       {/* Sticky comparison table drawer */}
       <CompareDrawer
         compareList={state.compareList}
+        results={state.results}
         onRemoveFromCompare={handleRemoveFromCompare}
         onClearAll={handleClearCompare}
         onClose={handleClearCompare}

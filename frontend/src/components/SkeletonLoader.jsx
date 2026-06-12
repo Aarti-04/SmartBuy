@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
 const STATUS_TEXTS = [
-  '🔍 Searching InstaMART...',
+  '🔍 Searching InstaMART & Zepto...',
   '🤖 Agent analysing results...',
   '📦 Fetching product details...',
   '✅ Almost done...'

@@ -45,14 +45,34 @@ function ProductCard({
         <div className="card-front">
           {/* Category Graphic Area */}
           <div className="product-card-graphic" style={{ background: product.gradient }}>
-            {product.emoji}
+            {product.imageUrl ? (
+              <img
+                src={product.imageUrl}
+                alt={product.name}
+                className="product-card-img"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'contain',
+                  padding: '8px',
+                  backgroundColor: 'white',
+                  borderRadius: '12px 12px 0 0'
+                }}
+              />
+            ) : (
+              product.emoji
+            )}
 
-            {/* Best Price Badge */}
-            {product.isBestPrice && (
+            {/* Best Price / Deal Badge */}
+            {product.platformWinner ? (
+              <div className="best-price-badge" style={{ backgroundColor: '#D97706', color: '#FFFFFF', boxShadow: '0 2px 6px rgba(217,119,6,0.3)' }}>
+                BEST DEAL 🏆
+              </div>
+            ) : product.isBestPrice ? (
               <div className="best-price-badge">
                 BEST PRICE
               </div>
-            )}
+            ) : null}
 
             {/* Price Intelligence Flip Trigger */}
             <button
@@ -71,7 +91,7 @@ function ProductCard({
             <div className="platform-tag">
               <span className="platform-dot" style={{ backgroundColor: config.dotColor }} />
               <span className="platform-label">
-                Swiggy {config.label}
+                {product.platform === 'instamart' ? 'Swiggy Instamart' : config.label}
               </span>
             </div>
 
@@ -149,29 +169,73 @@ function ProductCard({
 
             <div className="price-rows-container">
               {/* InstaMART Price Row */}
-              <div className="price-row active">
-                <span className="price-row-platform">InstaMART</span>
-                <div className="price-row-values">
-                  <span className="price-row-value">
-                    ₹{product.price}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleBuyClick}
-                    className="btn-buy-small"
-                  >
-                    Buy ↗
-                  </button>
+              {product.instamartPrice !== undefined ? (
+                <div className="price-row active">
+                  <span className="price-row-platform">InstaMART</span>
+                  <div className="price-row-values">
+                    <span className="price-row-value">
+                      ₹{product.instamartPrice}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        trackRedirect({
+                          productName: product.name,
+                          platform: 'instamart',
+                          price: product.instamartPrice,
+                          city: product.city || 'Mumbai'
+                        });
+                        window.open(product.instamartUrl, '_blank', 'noopener,noreferrer');
+                      }}
+                      className="btn-buy-small"
+                    >
+                      Buy ↗
+                    </button>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="price-row disabled">
+                  <span className="price-row-platform">InstaMART</span>
+                  <span style={{ fontSize: '12px', fontWeight: 600 }}>
+                    Not Available
+                  </span>
+                </div>
+              )}
 
-              {/* Zepto Locked Row */}
-              <div className="price-row disabled">
-                <span className="price-row-platform">Zepto</span>
-                <span style={{ fontSize: '12px', fontWeight: 600 }}>
-                  🔒 Soon
-                </span>
-              </div>
+              {/* Zepto Row */}
+              {product.zeptoPrice !== undefined ? (
+                <div className="price-row active">
+                  <span className="price-row-platform">Zepto</span>
+                  <div className="price-row-values">
+                    <span className="price-row-value">
+                      ₹{product.zeptoPrice}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        trackRedirect({
+                          productName: product.name,
+                          platform: 'zepto',
+                          price: product.zeptoPrice,
+                          city: product.city || 'Mumbai'
+                        });
+                        window.open(product.zeptoUrl, '_blank', 'noopener,noreferrer');
+                      }}
+                      className="btn-buy-small"
+                      style={{ backgroundColor: '#8B5CF6', color: 'white' }}
+                    >
+                      Buy ↗
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="price-row disabled">
+                  <span className="price-row-platform">Zepto</span>
+                  <span style={{ fontSize: '12px', fontWeight: 600 }}>
+                    🔒 Soon
+                  </span>
+                </div>
+              )}
 
               {/* Blinkit Locked Row */}
               <div className="price-row disabled">

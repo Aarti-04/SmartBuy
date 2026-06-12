@@ -2,12 +2,10 @@
 import os
 import sys
 import logging
-from typing import List
 
 from dotenv import load_dotenv
 load_dotenv()
 
-from langchain_core.messages import SystemMessage
 from langchain_mcp_adapters.tools import load_mcp_tools
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
@@ -16,12 +14,16 @@ from langchain.agents import create_agent
 # Configure logging
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = """You are a helpful grocery shopping assistant for InstaMART.
+SYSTEM_PROMPT = """You are a helpful grocery shopping assistant.
 When a user searches for a product:
-1. Use search_product to find matching items.
-2. Present results clearly with name, price, and quantity.
-3. Offer to get more details on any specific item.
-Always be concise and format prices clearly.
+1. Always search both Swiggy Instamart (using search_product) and Zepto (using search_zepto) for every query.
+2. Return results clearly labelled by platform using the headers "**INSTAMART:**" and "**ZEPTO:**" respectively.
+3. For each platform's results, you MUST return a numbered list starting with "1. " exactly like this:
+   1. [Product Name] | [Price] | [Quantity] | [URL] | [Image URL]
+   2. [Product Name] | [Price] | [Quantity] | [URL] | [Image URL]
+   Do not omit the list numbers. Always include the Image URL as the fifth field if it is provided by the tool output.
+4. If one of the platforms is unavailable (e.g. if a tool returns an error or indicates unavailability), return the available results along with a note, e.g. "Zepto unavailable".
+Always be concise, format prices clearly, and present results using the exact headers and formats described above.
 Answer the user's request based on the tool execution output."""
 
 # Fallback Gemini models as requested by the user
@@ -94,7 +96,16 @@ async def run_agent(query: str) -> str:
                         
                         # Extract final assistant response from messages list
                         if "messages" in result and result["messages"]:
-                            return result["messages"][-1].content
+                            content = result["messages"][-1].content
+                            if isinstance(content, list):
+                                text_parts = []
+                                for part in content:
+                                    if isinstance(part, dict) and part.get("type") == "text":
+                                        text_parts.append(part.get("text", ""))
+                                    elif isinstance(part, str):
+                                        text_parts.append(part)
+                                return "".join(text_parts)
+                            return str(content)
                         return "No response message returned from the agent."
                     except Exception as ex:
                         logger.error(f"Failed to initialize/run agent with model '{model_name}': {ex}")
