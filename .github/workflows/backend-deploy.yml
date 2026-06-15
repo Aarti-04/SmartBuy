@@ -1,0 +1,80 @@
+name: Backend Deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-deploy.yml'
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ap-south-1
+  ECR_REPOSITORY: smartbuy-backend
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build Docker Image
+        run: |
+          docker build \
+            -t ${{ env.ECR_REPOSITORY }}:latest \
+            ./backend
+
+      - name: Tag Image
+        run: |
+          docker tag \
+          ${{ env.ECR_REPOSITORY }}:latest \
+          615299744601.dkr.ecr.ap-south-1.amazonaws.com/${{ env.ECR_REPOSITORY }}:latest
+
+      - name: Push Image
+        run: |
+          docker push \
+          615299744601.dkr.ecr.ap-south-1.amazonaws.com/${{ env.ECR_REPOSITORY }}:latest
+
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+
+            aws ecr get-login-password \
+              --region ap-south-1 | sudo docker login \
+              --username AWS \
+              --password-stdin \
+              615299744601.dkr.ecr.ap-south-1.amazonaws.com
+
+            sudo docker pull \
+            615299744601.dkr.ecr.ap-south-1.amazonaws.com/smartbuy-backend:latest
+
+            sudo docker stop smartbuy-backend || true
+            sudo docker rm smartbuy-backend || true
+
+            sudo docker run -d \
+              --name smartbuy-backend \
+              --restart unless-stopped \
+              --link redis:redis \
+              -p 8000:8000 \
+              -e REDIS_URL=redis://redis:6379 \
+              -e LLM_PROVIDER="${{secrets.LLM_PROVIDER}}" \
+              -e APIFY_TOKEN="${{ secrets.APIFY_TOKEN }}" \
+              -e GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}" \
+              615299744601.dkr.ecr.ap-south-1.amazonaws.com/smartbuy-backend:latest
