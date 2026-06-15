@@ -88,6 +88,12 @@ function SearchBar({ onSearch, currentCity, currentQuery, isLoading }) {
       return;
     }
 
+    // Geolocation requires a secure context (HTTPS or localhost)
+    if (window.isSecureContext === false) {
+      setLocationError("Geolocation requires a secure connection (HTTPS). Please select a city manually.");
+      return;
+    }
+
     setIsLocating(true);
     setLocationError(null);
 
