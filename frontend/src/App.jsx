@@ -94,16 +94,17 @@ function MainApp() {
   const [lastRawLog, setLastRawLog] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(
-    !!localStorage.getItem('basketai_redirect_notice_dismissed')
+    !!(localStorage.getItem('smartbuy_redirect_notice_dismissed') || localStorage.getItem('basketai_redirect_notice_dismissed'))
   );
   const [devMode, setDevMode] = useState(() => {
-    return localStorage.getItem('basketai_dev_mode') === 'true';
+    const val = localStorage.getItem('smartbuy_dev_mode') || localStorage.getItem('basketai_dev_mode');
+    return val === 'true';
   });
 
   const handleToggleDevMode = useCallback(() => {
     setDevMode(prev => {
       const next = !prev;
-      localStorage.setItem('basketai_dev_mode', String(next));
+      localStorage.setItem('smartbuy_dev_mode', String(next));
       return next;
     });
   }, []);
@@ -189,7 +190,7 @@ function MainApp() {
   }, []);
 
   const handleDismissBanner = useCallback(() => {
-    localStorage.setItem('basketai_redirect_notice_dismissed', 'true');
+    localStorage.setItem('smartbuy_redirect_notice_dismissed', 'true');
     setBannerDismissed(true);
   }, []);
 
@@ -216,7 +217,7 @@ function MainApp() {
       {!bannerDismissed && (
         <div className="redirect-notice-banner">
           <span>
-            ℹ️ <strong>BasketAI is a price comparison tool.</strong> Clicking 'Buy' opens the retailer's website in a new tab — we never handle your order or payment.
+            ℹ️ <strong>SmartBuy is a price comparison tool.</strong> Clicking 'Buy' opens the retailer's website in a new tab — we never handle your order or payment.
           </span>
           <button
             onClick={handleDismissBanner}
@@ -335,7 +336,7 @@ function MainApp() {
       />
 
       <footer className="app-footer">
-        BasketAI Quick Commerce Shopping Agent Console • Powered by Playwright Stealth Scrape
+        SmartBuy Quick Commerce Shopping Agent Console • Powered by Playwright Stealth Scrape
       </footer>
     </div>
   );

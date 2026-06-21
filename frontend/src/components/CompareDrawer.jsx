@@ -229,7 +229,7 @@ function CompareDrawer({
 
         {/* Footer disclaimer */}
         <div className="compare-footer-disclaimer">
-          💡 BasketAI compares prices only. All purchases happen directly on the platform's website. We don't store your order or payment data.
+          💡 SmartBuy compares prices only. All purchases happen directly on the platform's website. We don't store your order or payment data.
         </div>
 
       </div>

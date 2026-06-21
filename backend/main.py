@@ -1,4 +1,6 @@
 import logging
+from contextlib import asynccontextmanager
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
@@ -9,10 +11,34 @@ logger = logging.getLogger(__name__)
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from agent import run_agent
-from cache import get_cached, set_cache
+from agent import run_agent, get_mcp_manager
+from cache import get_cached, set_cache, close_redis
 
-app = FastAPI(title="InstaMART AI Agent API")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Pre-initialize the persistent MCP client connection
+    logger.info("Starting up SmartBuy backend server...")
+    manager = get_mcp_manager()
+    try:
+        await manager.start()
+    except Exception as e:
+        logger.error(f"Failed to pre-warm MCP client manager on startup: {e}")
+    
+    yield
+    
+    # Shutdown: Clean up persistent browser and Redis connections
+    logger.info("Shutting down SmartBuy backend server...")
+    try:
+        await manager.stop()
+    except Exception as e:
+        logger.error(f"Error during MCP client shutdown: {e}")
+        
+    try:
+        await close_redis()
+    except Exception as e:
+        logger.error(f"Error closing Redis connection: {e}")
+
+app = FastAPI(title="SmartBuy AI Agent API", lifespan=lifespan)
 
 app.add_middleware(CORSMiddleware, allow_origins=["*"],
   allow_methods=["*"], allow_headers=["*"])

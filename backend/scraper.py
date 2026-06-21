@@ -4,6 +4,7 @@ import asyncio
 import random
 import logging
 import urllib.parse
+import atexit
 from typing import List, Dict, Any, Optional
 from playwright.async_api import async_playwright, Page, BrowserContext
 from playwright_stealth import Stealth
@@ -21,6 +22,87 @@ USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/119.0"
 ]
 
+class BrowserManager:
+    _playwright = None
+    _browser = None
+    _lock = asyncio.Lock()
+
+    @classmethod
+    async def get_browser(cls):
+        async with cls._lock:
+            if cls._browser is None or not cls._browser.is_connected():
+                if cls._browser:
+                    try:
+                        await cls._browser.close()
+                    except Exception:
+                        pass
+                    cls._browser = None
+                
+                if cls._playwright is None:
+                    cls._playwright = await async_playwright().start()
+                
+                logger.info("Launching a new Playwright Chromium instance...")
+                cls._browser = await cls._playwright.chromium.launch(
+                    headless=True,
+                    args=["--disable-blink-features=AutomationControlled"]
+                )
+                logger.info("Playwright Chromium instance launched.")
+            return cls._browser
+
+    @classmethod
+    async def close_browser(cls):
+        async with cls._lock:
+            if cls._browser:
+                logger.info("Closing Playwright Chromium instance...")
+                try:
+                    await cls._browser.close()
+                except Exception as e:
+                    logger.warning(f"Error closing browser: {e}")
+                cls._browser = None
+            if cls._playwright:
+                try:
+                    await cls._playwright.stop()
+                except Exception as e:
+                    logger.warning(f"Error stopping playwright: {e}")
+                cls._playwright = None
+            logger.info("Playwright Chromium instance stopped.")
+
+def cleanup_browser():
+    if BrowserManager._browser:
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                loop.create_task(BrowserManager.close_browser())
+            else:
+                loop.run_until_complete(BrowserManager.close_browser())
+        except Exception:
+            pass
+
+atexit.register(cleanup_browser)
+
+async def create_stealth_page(browser, user_agent: Optional[str] = None) -> tuple[BrowserContext, Page]:
+    """
+    Creates a new browser context and page with randomized User Agent and stealth settings.
+    """
+    ua = user_agent or random.choice(USER_AGENTS)
+    context = await browser.new_context(
+        user_agent=ua,
+        viewport={"width": 1280, "height": 800},
+        extra_http_headers={
+            "Accept-Language": "en-US,en;q=0.9",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        }
+    )
+    page = await context.new_page()
+    
+    stealth = Stealth(
+        chrome_app=False,
+        chrome_csi=False,
+        chrome_load_times=False
+    )
+    await stealth.apply_stealth_async(page)
+    return context, page
+
 async def random_delay(min_s: float = 2.0, max_s: float = 5.0) -> None:
     """Sleep for a randomized duration to mimic human behavior."""
     delay = random.uniform(min_s, max_s)
@@ -31,25 +113,19 @@ async def handle_location_modal(page: Page, city: str) -> None:
     Attempts to locate and fill out the delivery location selector on Swiggy.
     """
     try:
-        # Selectors commonly matching the location modal or trigger
-        selectors = [
-            "input[placeholder*='location']",
-            "input[placeholder*='Search for area']",
-            "input[placeholder*='address']",
-            "input[placeholder*='delivery']",
-            ".LocationSelection_input",
+        combined_sel = (
+            "input[placeholder*='location'], "
+            "input[placeholder*='Search for area'], "
+            "input[placeholder*='address'], "
+            "input[placeholder*='delivery'], "
+            ".LocationSelection_input, "
             "div[class*='location'] input"
-        ]
+        )
         
-        location_input = None
-        for sel in selectors:
-            try:
-                el = await page.wait_for_selector(sel, timeout=3000)
-                if el:
-                    location_input = el
-                    break
-            except Exception:
-                continue
+        try:
+            location_input = await page.wait_for_selector(combined_sel, timeout=2000)
+        except Exception:
+            location_input = None
 
         if location_input:
             logger.info(f"Setting delivery location to: {city}")
@@ -58,24 +134,23 @@ async def handle_location_modal(page: Page, city: str) -> None:
             await location_input.fill(city)
             await random_delay(1.5, 3.0) # Wait for suggestions to render
             
-            # Click the first autocomplete option
-            suggestion_selectors = [
-                "div[class*='suggestion']",
-                ".LocationSelection_suggestion",
-                "button[class*='suggestion']",
-                "div[class*='address']",
+            combined_sug = (
+                "div[class*='suggestion'], "
+                ".LocationSelection_suggestion, "
+                "button[class*='suggestion'], "
+                "div[class*='address'], "
                 "span[class*='location']"
-            ]
-            for sug_sel in suggestion_selectors:
-                try:
-                    suggestions = await page.locator(sug_sel).all()
-                    if suggestions:
-                        await suggestions[0].click()
-                        logger.info("Successfully clicked location suggestion.")
-                        await random_delay(2.0, 4.0) # Wait for session redirect
-                        return
-                except Exception:
-                    continue
+            )
+            try:
+                await page.wait_for_selector(combined_sug, timeout=4000)
+                suggestions = await page.locator(combined_sug).all()
+                if suggestions:
+                    await suggestions[0].click()
+                    logger.info("Successfully clicked location suggestion.")
+                    await random_delay(2.0, 3.5) # Wait for session redirect
+                    return
+            except Exception as sug_err:
+                logger.warning(f"Failed to configure location suggestion: {sug_err}")
     except Exception as e:
         logger.warning(f"Did not configure location modal: {e}. Moving on.")
 
@@ -88,118 +163,95 @@ async def search_instamart(query: str, city: str = "Mumbai") -> List[Dict[str, A
     backoff = 2.0
     
     for attempt in range(retries):
+        context = None
+        page = None
         try:
-            async with async_playwright() as p:
-                browser = await p.chromium.launch(
-                    headless=True,
-                    args=["--disable-blink-features=AutomationControlled"]
-                )
-                
-                user_agent = random.choice(USER_AGENTS)
-                context = await browser.new_context(
-                    user_agent=user_agent,
-                    viewport={"width": 1280, "height": 800},
-                    extra_http_headers={
-                        "Accept-Language": "en-US,en;q=0.9",
-                        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            browser = await BrowserManager.get_browser()
+            context, page = await create_stealth_page(browser)
+            
+            logger.info(f"Opening Swiggy homepage (Attempt {attempt+1}/{retries})...")
+            await page.goto(INSTAMART_BASE, wait_until="domcontentloaded", timeout=15000)
+            await random_delay(1.0, 2.5)
+            
+            # Configure the location modal if visible
+            await handle_location_modal(page, city)
+            
+            # Navigate to Instamart Search
+            search_url = f"{INSTAMART_BASE}/search?query={urllib.parse.quote(query)}"
+            logger.info(f"Searching for products via: {search_url}")
+            await page.goto(search_url, wait_until="domcontentloaded", timeout=15000)
+            await random_delay(1.5, 3.0)
+            
+            # Combined check for standard and fallback selectors in parallel with 6s timeout
+            combined_card_sel = '[data-testid="item-collection-card-full"], div[class*="_3Rr1X"], div[class*="ProductCard"]'
+            try:
+                await page.wait_for_selector(combined_card_sel, timeout=6000)
+            except Exception:
+                logger.warning("Product card selectors not found. Proceeding to evaluation...")
+            
+            # Extract structured information from the page DOM
+            products = await page.evaluate("""
+            () => {
+                // Try to locate parent containers first
+                let containers = document.querySelectorAll('div._3Rr1X');
+                if (containers.length === 0) {
+                    // Fallback to cards directly
+                    let cards = document.querySelectorAll('[data-testid="item-collection-card-full"]');
+                    if (cards.length === 0) {
+                        cards = document.querySelectorAll("div[class*='ProductCard']");
                     }
-                )
-                
-                page = await context.new_page()
-                
-                # Apply Stealth while disabling features that crash modern React boundary elements
-                stealth = Stealth(
-                    chrome_app=False,
-                    chrome_csi=False,
-                    chrome_load_times=False
-                )
-                await stealth.apply_stealth_async(page)
-                
-                logger.info(f"Opening Swiggy homepage (Attempt {attempt+1}/{retries})...")
-                await page.goto(INSTAMART_BASE, wait_until="domcontentloaded", timeout=30000)
-                await random_delay(1.0, 2.5)
-                
-                # Configure the location modal if visible
-                await handle_location_modal(page, city)
-                
-                # Navigate to Instamart Search
-                search_url = f"{INSTAMART_BASE}/search?query={query}"
-                logger.info(f"Searching for products via: {search_url}")
-                await page.goto(search_url, wait_until="networkidle", timeout=30000)
-                await random_delay(2.0, 4.0)
-                
-                # Wait for product card container or item card test ID
-                try:
-                    await page.wait_for_selector('[data-testid="item-collection-card-full"]', timeout=10000)
-                except Exception:
-                    logger.warning("Standard card test ID not found. Waiting for class container...")
-                    await page.wait_for_selector("div[class*='_3Rr1X']", timeout=5000)
-                
-                # Extract structured information from the page DOM
-                products = await page.evaluate("""
-                () => {
-                    // Try to locate parent containers first
-                    let containers = document.querySelectorAll('div._3Rr1X');
-                    if (containers.length === 0) {
-                        // Fallback to cards directly
-                        let cards = document.querySelectorAll('[data-testid="item-collection-card-full"]');
-                        if (cards.length === 0) {
-                            cards = document.querySelectorAll("div[class*='ProductCard']");
-                        }
-                        return Array.from(cards).slice(0, 10).map(card => {
-                            const nameEl = card.querySelector('div[class*="dNVSmW"]') || card.querySelector('div.sc-gEvEer:nth-child(3)') || card.querySelector('div');
-                            const descEl = card.querySelector('div[class*="qCfSW"]') || card.querySelector('div.sc-gEvEer:nth-child(4)');
-                            const name = nameEl ? nameEl.innerText.trim() : "";
-                            return {
-                                name: name,
-                                price: "N/A",
-                                quantity: "N/A",
-                                description: descEl ? descEl.innerText.trim() : "",
-                                image: card.querySelector('img')?.src || null,
-                                url: `https://www.swiggy.com/instamart/search?query=${encodeURIComponent(name)}`
-                            };
-                        });
-                    }
-                    
-                    return Array.from(containers).slice(0, 10).map(container => {
-                        const card = container.querySelector('[data-testid="item-collection-card-full"]');
-                        if (!card) return null;
-                        
-                        // Extract name, description, image
-                        const nameEl = card.querySelector('div[class*="dNVSmW"]') || card.querySelector('div.sc-gEvEer:nth-child(3)');
+                    return Array.from(cards).slice(0, 10).map(card => {
+                        const nameEl = card.querySelector('div[class*="dNVSmW"]') || card.querySelector('div.sc-gEvEer:nth-child(3)') || card.querySelector('div');
                         const descEl = card.querySelector('div[class*="qCfSW"]') || card.querySelector('div.sc-gEvEer:nth-child(4)');
-                        const imgEl = card.querySelector('img');
-                        
-                        // Extract quantity, price from parent container _3dcA8
-                        const qtyEl = container.querySelector('div[class*="bCqPoH"]') || container.querySelector('div[class*="_3wq_F"]');
-                        const priceEl = container.querySelector('div[class*="iQcBUp"]') || container.querySelector('div[class*="_2jn41"]');
-                        
-                        const name = nameEl ? nameEl.innerText.trim() : "Unknown Product";
-                        const price = priceEl ? priceEl.innerText.trim() : "N/A";
-                        const quantity = qtyEl ? qtyEl.innerText.trim() : "N/A";
-                        const description = descEl ? descEl.innerText.trim() : "";
-                        
+                        const name = nameEl ? nameEl.innerText.trim() : "";
                         return {
                             name: name,
-                            price: price,
-                            quantity: quantity,
-                            description: description,
-                            image: imgEl ? imgEl.src : null,
+                            price: "N/A",
+                            quantity: "N/A",
+                            description: descEl ? descEl.innerText.trim() : "",
+                            image: card.querySelector('img')?.src || null,
                             url: `https://www.swiggy.com/instamart/search?query=${encodeURIComponent(name)}`
                         };
-                    }).filter(Boolean);
+                    });
                 }
-                """)
                 
-                await browser.close()
-                
-                valid_products = [p for p in products if p.get('name')]
-                if valid_products:
-                    logger.info(f"Scraped {len(valid_products)} products successfully.")
-                    return valid_products
-                else:
-                    logger.warning("Scrape completed, but 0 valid products extracted.")
+                return Array.from(containers).slice(0, 10).map(container => {
+                    const card = container.querySelector('[data-testid="item-collection-card-full"]');
+                    if (!card) return null;
                     
+                    // Extract name, description, image
+                    const nameEl = card.querySelector('div[class*="dNVSmW"]') || card.querySelector('div.sc-gEvEer:nth-child(3)');
+                    const descEl = card.querySelector('div[class*="qCfSW"]') || card.querySelector('div.sc-gEvEer:nth-child(4)');
+                    const imgEl = card.querySelector('img');
+                    
+                    // Extract quantity, price from parent container _3dcA8
+                    const qtyEl = container.querySelector('div[class*="bCqPoH"]') || container.querySelector('div[class*="_3wq_F"]');
+                    const priceEl = container.querySelector('div[class*="iQcBUp"]') || container.querySelector('div[class*="_2jn41"]');
+                    
+                    const name = nameEl ? nameEl.innerText.trim() : "Unknown Product";
+                    const price = priceEl ? priceEl.innerText.trim() : "N/A";
+                    const quantity = qtyEl ? qtyEl.innerText.trim() : "N/A";
+                    const description = descEl ? descEl.innerText.trim() : "";
+                    
+                    return {
+                        name: name,
+                        price: price,
+                        quantity: quantity,
+                        description: description,
+                        image: imgEl ? imgEl.src : null,
+                        url: `https://www.swiggy.com/instamart/search?query=${encodeURIComponent(name)}`
+                    };
+                }).filter(Boolean);
+            }
+            """)
+            
+            valid_products = [p for p in products if p.get('name')]
+            if valid_products:
+                logger.info(f"Scraped {len(valid_products)} products successfully.")
+                return valid_products
+            else:
+                logger.warning("Scrape completed, but 0 valid products extracted.")
+                
         except Exception as e:
             logger.error(f"Error on scrape attempt {attempt+1}: {e}")
             if attempt < retries - 1:
@@ -208,6 +260,17 @@ async def search_instamart(query: str, city: str = "Mumbai") -> List[Dict[str, A
                 await asyncio.sleep(sleep_time)
             else:
                 logger.error("All scraper retry attempts exhausted.")
+        finally:
+            if page:
+                try:
+                    await page.close()
+                except Exception:
+                    pass
+            if context:
+                try:
+                    await context.close()
+                except Exception:
+                    pass
                 
     return []
 
@@ -230,58 +293,55 @@ async def get_product_details(product_url: str) -> str:
         return f"No details found for product search query: '{query}'."
 
     # Direct URL scraping fallback
+    context = None
+    page = None
     try:
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(
-                headless=True,
-                args=["--disable-blink-features=AutomationControlled"]
-            )
-            context = await browser.new_context(
-                user_agent=random.choice(USER_AGENTS),
-                viewport={"width": 1280, "height": 800}
-            )
-            page = await context.new_page()
+        browser = await BrowserManager.get_browser()
+        context, page = await create_stealth_page(browser)
+        
+        logger.info(f"Navigating to product details: {product_url}")
+        await page.goto(product_url, wait_until="domcontentloaded", timeout=15000)
+        await random_delay(1.5, 3.0)
+        
+        details = await page.evaluate("""
+        () => {
+            const titleEl = document.querySelector('h1') || document.querySelector('[class*="title"]') || document.querySelector('[class*="Title"]');
+            const priceEl = document.querySelector('[class*="price"]') || document.querySelector('[class*="Price"]');
+            const quantityEl = document.querySelector('[class*="quantity"]') || document.querySelector('[class*="weight"]');
             
-            stealth = Stealth(
-                chrome_app=False,
-                chrome_csi=False,
-                chrome_load_times=False
-            )
-            await stealth.apply_stealth_async(page)
+            const descElements = document.querySelectorAll('[class*="description"], [class*="detail"], [class*="about"]');
+            let descText = "";
+            descElements.forEach(el => {
+                if (el.innerText.trim().length > descText.length) {
+                    descText = el.innerText.trim();
+                }
+            });
             
-            logger.info(f"Navigating to product details: {product_url}")
-            await page.goto(product_url, wait_until="networkidle", timeout=30000)
-            await random_delay(2.0, 4.0)
-            
-            details = await page.evaluate("""
-            () => {
-                const titleEl = document.querySelector('h1') || document.querySelector('[class*="title"]') || document.querySelector('[class*="Title"]');
-                const priceEl = document.querySelector('[class*="price"]') || document.querySelector('[class*="Price"]');
-                const quantityEl = document.querySelector('[class*="quantity"]') || document.querySelector('[class*="weight"]');
-                
-                const descElements = document.querySelectorAll('[class*="description"], [class*="detail"], [class*="about"]');
-                let descText = "";
-                descElements.forEach(el => {
-                    if (el.innerText.trim().length > descText.length) {
-                        descText = el.innerText.trim();
-                    }
-                });
-                
-                return {
-                    name: titleEl ? titleEl.innerText.trim() : "Unknown Product",
-                    price: priceEl ? priceEl.innerText.trim() : "Unknown Price",
-                    quantity: quantityEl ? quantityEl.innerText.trim() : "N/A",
-                    description: descText || "No description provided."
-                };
-            }
-            """)
-            
-            await browser.close()
-            return f"Product Name: {details['name']}\nPrice: {details['price']}\nQuantity: {details['quantity']}\nDescription: {details['description']}"
-            
+            return {
+                name: titleEl ? titleEl.innerText.trim() : "Unknown Product",
+                price: priceEl ? priceEl.innerText.trim() : "Unknown Price",
+                quantity: quantityEl ? quantityEl.innerText.trim() : "N/A",
+                description: descText || "No description provided."
+            };
+        }
+        """)
+        
+        return f"Product Name: {details['name']}\nPrice: {details['price']}\nQuantity: {details['quantity']}\nDescription: {details['description']}"
+        
     except Exception as e:
         logger.error(f"Error scraping product details: {e}")
         return f"Failed to retrieve product details from {product_url}. Error: {str(e)}"
+    finally:
+        if page:
+            try:
+                await page.close()
+            except Exception:
+                pass
+        if context:
+            try:
+                await context.close()
+            except Exception:
+                pass
 
 if __name__ == "__main__":
     async def main() -> None:

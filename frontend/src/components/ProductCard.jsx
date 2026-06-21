@@ -132,7 +132,7 @@ function ProductCard({
               <button
                 type="button"
                 onClick={handleBuyClick}
-                title={`Opens ${config.label} in a new tab. BasketAI does not handle orders or payments.`}
+                title={`Opens ${config.label} in a new tab. SmartBuy does not handle orders or payments.`}
                 className="btn-buy"
               >
                 <span className="btn-buy-bullet" style={{ backgroundColor: config.dotColor }} />
