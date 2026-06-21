@@ -7,7 +7,7 @@ function Navbar({ isOnline, devMode, onToggleDevMode }) {
       <div className="navbar-brand">
         <span className="navbar-logo" role="img" aria-label="grocery bag">🛍️</span>
         <span className="navbar-brand-name">
-          Basket<span style={{ color: 'var(--brand-accent)' }}>AI</span>
+          Smart<span style={{ color: 'var(--brand-accent)' }}>Buy</span>
         </span>
       </div>
 

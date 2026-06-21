@@ -4,6 +4,8 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
 
+logger = logging.getLogger(__name__)
+
 import httpx
 import os
 import asyncio
@@ -12,7 +14,7 @@ from fastmcp import FastMCP
 from scraper import search_instamart, get_product_details as scrape_product_details
 from cache import get_cached, set_cache
 
-mcp = FastMCP("InstaMART Agent Tools")
+mcp = FastMCP("SmartBuy Agent Tools")
 
 @mcp.tool()
 async def search_product(query: str, city: str = "Mumbai") -> str:
@@ -152,9 +154,6 @@ def format_products(products: list) -> str:
         else:
             lines.append(f"{i}. {p['name']} | {price} | {p['quantity']}")
     return "\n".join(lines)
-
-import logging
-logger = logging.getLogger(__name__)
 
 if __name__ == "__main__":
     mcp.run(transport="stdio")
