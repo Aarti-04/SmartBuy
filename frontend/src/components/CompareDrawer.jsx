@@ -61,7 +61,7 @@ function CompareDrawer({
                 <th className="compare-table-header-details">Product Details</th>
                 <th className="compare-table-header-instamart">Swiggy Instamart</th>
                 <th className="compare-table-header-zepto" style={{ color: '#8B5CF6', fontWeight: 700 }}>Zepto</th>
-                <th className="compare-table-header-locked">Blinkit 🔒</th>
+                <th className="compare-table-header-blinkit" style={{ color: '#F59E0B', fontWeight: 700 }}>Blinkit</th>
                 <th style={{ width: '60px' }}></th>
               </tr>
             </thead>
@@ -79,24 +79,42 @@ function CompareDrawer({
 
                 let instamartProduct = null;
                 let zeptoProduct = null;
+                let blinkitProduct = null;
 
                 if (product.platform === 'instamart') {
                   instamartProduct = product;
                   zeptoProduct = results.find(p => p.platform === 'zepto' && getFuzzyKey(p.name) === key);
-                } else {
+                  blinkitProduct = results.find(p => p.platform === 'blinkit' && getFuzzyKey(p.name) === key);
+                } else if (product.platform === 'zepto') {
                   zeptoProduct = product;
                   instamartProduct = results.find(p => p.platform === 'instamart' && getFuzzyKey(p.name) === key);
+                  blinkitProduct = results.find(p => p.platform === 'blinkit' && getFuzzyKey(p.name) === key);
+                } else {
+                  blinkitProduct = product;
+                  instamartProduct = results.find(p => p.platform === 'instamart' && getFuzzyKey(p.name) === key);
+                  zeptoProduct = results.find(p => p.platform === 'zepto' && getFuzzyKey(p.name) === key);
                 }
 
                 let summaryText = null;
-                if (instamartProduct && zeptoProduct) {
-                  const diff = instamartProduct.price - zeptoProduct.price;
-                  if (diff > 0) {
-                    summaryText = `Zepto is ₹${diff} cheaper ⚡`;
-                  } else if (diff < 0) {
-                    summaryText = `Instamart is ₹${Math.abs(diff)} cheaper ⚡`;
+                const activeProds = [];
+                if (instamartProduct) activeProds.push({ name: 'Instamart', price: instamartProduct.price });
+                if (zeptoProduct) activeProds.push({ name: 'Zepto', price: zeptoProduct.price });
+                if (blinkitProduct) activeProds.push({ name: 'Blinkit', price: blinkitProduct.price });
+
+                if (activeProds.length >= 2) {
+                  const minPrice = Math.min(...activeProds.map(p => p.price));
+                  const cheapest = activeProds.find(p => p.price === minPrice);
+                  const others = activeProds.filter(p => p.name !== cheapest.name);
+                  
+                  const savingParts = others.map(o => {
+                    const diff = o.price - cheapest.price;
+                    return diff > 0 ? `₹${diff} vs ${o.name}` : null;
+                  }).filter(Boolean);
+
+                  if (savingParts.length > 0) {
+                    summaryText = `${cheapest.name} is cheapest — save ${savingParts.join(', ')} ⚡`;
                   } else {
-                    summaryText = "Same price on both platforms";
+                    summaryText = "Same price across matched platforms";
                   }
                 }
 
@@ -140,8 +158,8 @@ function CompareDrawer({
                             <div style={{
                               fontSize: '11px',
                               fontWeight: '700',
-                              color: summaryText.includes('cheaper') ? '#10B981' : 'var(--text-muted)',
-                              backgroundColor: summaryText.includes('cheaper') ? 'rgba(16, 185, 129, 0.1)' : 'rgba(0,0,0,0.05)',
+                              color: summaryText.includes('cheapest') ? '#10B981' : 'var(--text-muted)',
+                              backgroundColor: summaryText.includes('cheapest') ? 'rgba(16, 185, 129, 0.1)' : 'rgba(0,0,0,0.05)',
                               padding: '2px 6px',
                               borderRadius: '4px',
                               display: 'inline-block'
@@ -200,12 +218,28 @@ function CompareDrawer({
                       )}
                     </td>
 
-                    {/* Blinkit Locked */}
-                    <td
-                      className="coming-soon-cell"
-                      title="We'll redirect you to Blinkit when integrated"
-                    >
-                      <span>Coming Soon</span>
+                    {/* Blinkit Price */}
+                    <td style={{ verticalAlign: 'middle' }}>
+                      {blinkitProduct ? (
+                        <>
+                          <div className="price-cell-value">
+                            <span>₹{blinkitProduct.price}</span>
+                            <span className="price-cell-unit">
+                              ({blinkitProduct.unitPrice})
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleProductRedirect(blinkitProduct)}
+                            className="btn-buy-drawer"
+                            style={{ backgroundColor: '#F9C005', color: '#1a1a1a' }}
+                          >
+                            Buy ↗
+                          </button>
+                        </>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Not Available</span>
+                      )}
                     </td>
 
                     {/* Remove Action Button */}

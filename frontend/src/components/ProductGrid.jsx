@@ -25,13 +25,16 @@ function ProductGrid({
           key,
           displayName: product.name.split(' ').slice(0, 3).join(' '),
           instamart: [],
-          zepto: []
+          zepto: [],
+          blinkit: []
         };
       }
       if (product.platform === 'instamart') {
         groups[key].instamart.push(product);
       } else if (product.platform === 'zepto') {
         groups[key].zepto.push(product);
+      } else if (product.platform === 'blinkit') {
+        groups[key].blinkit.push(product);
       }
     });
     
@@ -39,7 +42,13 @@ function ProductGrid({
     const singles = [];
 
     Object.values(groups).forEach((group) => {
-      if (group.instamart.length > 0 && group.zepto.length > 0) {
+      const hasIM = group.instamart.length > 0;
+      const hasZ = group.zepto.length > 0;
+      const hasB = group.blinkit.length > 0;
+      
+      const matchCount = [hasIM, hasZ, hasB].filter(Boolean).length;
+      
+      if (matchCount >= 2) {
         compared.push(group);
         // If there are additional products in the compared group (e.g. index >= 1), add them to singles so they don't get lost
         if (group.instamart.length > 1) {
@@ -48,8 +57,11 @@ function ProductGrid({
         if (group.zepto.length > 1) {
           singles.push(...group.zepto.slice(1));
         }
+        if (group.blinkit.length > 1) {
+          singles.push(...group.blinkit.slice(1));
+        }
       } else {
-        singles.push(...group.instamart, ...group.zepto);
+        singles.push(...group.instamart, ...group.zepto, ...group.blinkit);
       }
     });
     
@@ -92,18 +104,21 @@ function ProductGrid({
             {comparedGroups.map((group) => {
               const imProd = group.instamart[0];
               const zProd = group.zepto[0];
+              const bProd = group.blinkit[0];
 
-              // Calculate saving label
+              // Find the cheapest matched product
+              const activeProds = [imProd, zProd, bProd].filter(Boolean);
+              const minPrice = Math.min(...activeProds.map(p => p.price));
+              const maxPrice = Math.max(...activeProds.map(p => p.price));
+              const cheapest = activeProds.find(p => p.price === minPrice);
+              const diff = maxPrice - minPrice;
+
               let savingLabel = null;
-              let savingColor = 'var(--text-muted)';
-              const diff = Math.abs(imProd.price - zProd.price);
               if (diff > 0) {
-                const cheaperPlatform = imProd.price < zProd.price ? 'Swiggy Instamart' : 'Zepto';
-                savingLabel = `You save ₹${diff} on ${cheaperPlatform}! 🏆`;
-                savingColor = '#10B981'; // Green for savings
+                const platformName = cheapest.platform === 'instamart' ? 'InstaMART' : cheapest.platform === 'zepto' ? 'Zepto' : 'Blinkit';
+                savingLabel = `${platformName} is cheapest (save ₹${diff}!) 🏆`;
               } else {
-                savingLabel = "Same price on both platforms";
-                savingColor = 'var(--text-muted)';
+                savingLabel = "Same price across platforms";
               }
 
               return (
@@ -119,63 +134,74 @@ function ProductGrid({
                   }}
                 >
                   {/* Group Header */}
-                  <h3 style={{
-                    fontSize: '15px',
-                    fontWeight: '700',
-                    color: 'var(--brand-dark)',
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
                     marginBottom: '16px',
                     borderBottom: '1px solid var(--border)',
                     paddingBottom: '8px',
-                    textTransform: 'capitalize'
+                    flexWrap: 'wrap',
+                    gap: '8px'
                   }}>
-                    {group.displayName} Comparison
-                  </h3>
-
-                  {/* Side-by-side cards */}
-                  <div className="compare-row-sides">
-                    {/* Instamart Column */}
-                    <div className="compare-col-instamart" style={{ display: 'flex', justifyContent: 'center' }}>
-                      <ProductCard
-                        product={imProd}
-                        onAddToCompare={onAddToCompare}
-                        onRemoveFromCompare={onRemoveFromCompare}
-                        isAddedToCompare={compareList.some((item) => item.id === imProd.id)}
-                      />
-                    </div>
-
-                    {/* Savings / Middle Connector */}
-                    <div className="compare-col-savings" style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      minWidth: '160px',
-                      textAlign: 'center',
-                      padding: '10px'
+                    <h3 style={{
+                      fontSize: '15px',
+                      fontWeight: '700',
+                      color: 'var(--brand-dark)',
+                      textTransform: 'capitalize',
+                      margin: 0
                     }}>
-                      <span style={{ fontSize: '24px', marginBottom: '8px' }}>⚡</span>
-                      <div style={{
-                        fontSize: '13px',
-                        fontWeight: '700',
-                        color: savingColor,
-                        padding: '6px 12px',
-                        backgroundColor: savingColor === '#10B981' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(0,0,0,0.05)',
-                        borderRadius: '8px',
-                        lineHeight: '1.4'
-                      }}>
-                        {savingLabel}
-                      </div>
+                      {group.displayName} Comparison
+                    </h3>
+                    <div style={{
+                      fontSize: '12px',
+                      fontWeight: '700',
+                      color: diff > 0 ? '#10B981' : 'var(--text-muted)',
+                      padding: '4px 10px',
+                      backgroundColor: diff > 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(0,0,0,0.05)',
+                      borderRadius: '8px',
+                    }}>
+                      {savingLabel}
                     </div>
+                  </div>
+
+                  {/* Side-by-side cards (2 or 3 columns dynamically) */}
+                  <div className="compare-row-sides-3col" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
+                    {/* Instamart Column */}
+                    {imProd && (
+                      <div className="compare-col-instamart" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                        <ProductCard
+                          product={imProd}
+                          onAddToCompare={onAddToCompare}
+                          onRemoveFromCompare={onRemoveFromCompare}
+                          isAddedToCompare={compareList.some((item) => item.id === imProd.id)}
+                        />
+                      </div>
+                    )}
 
                     {/* Zepto Column */}
-                    <div className="compare-col-zepto" style={{ display: 'flex', justifyContent: 'center' }}>
-                      <ProductCard
-                        product={zProd}
-                        onAddToCompare={onAddToCompare}
-                        onRemoveFromCompare={onRemoveFromCompare}
-                        isAddedToCompare={compareList.some((item) => item.id === zProd.id)}
-                      />
-                    </div>
+                    {zProd && (
+                      <div className="compare-col-zepto" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                        <ProductCard
+                          product={zProd}
+                          onAddToCompare={onAddToCompare}
+                          onRemoveFromCompare={onRemoveFromCompare}
+                          isAddedToCompare={compareList.some((item) => item.id === zProd.id)}
+                        />
+                      </div>
+                    )}
+
+                    {/* Blinkit Column */}
+                    {bProd && (
+                      <div className="compare-col-blinkit" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                        <ProductCard
+                          product={bProd}
+                          onAddToCompare={onAddToCompare}
+                          onRemoveFromCompare={onRemoveFromCompare}
+                          isAddedToCompare={compareList.some((item) => item.id === bProd.id)}
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
               );

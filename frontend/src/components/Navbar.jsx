@@ -25,10 +25,10 @@ function Navbar({ isOnline, devMode, onToggleDevMode }) {
           <span>Zepto Live</span>
         </div>
 
-        {/* Blinkit Locked Pill */}
-        <div className="status-pill-locked" title="Blinkit price checks are coming soon!">
-          <span style={{ fontSize: '12px' }}>🔒</span>
-          <span>Blinkit — Coming Soon</span>
+        {/* Blinkit Live Pill */}
+        <div className="status-pill online" style={{ backgroundColor: '#FEF3C7', border: '1px solid rgba(245, 158, 11, 0.2)', color: '#B45309' }}>
+          <span className="status-dot online" style={{ backgroundColor: '#F59E0B', boxShadow: '0 0 8px #F59E0B' }} />
+          <span>Blinkit Live</span>
         </div>
 
         {/* Developer Mode Toggle */}

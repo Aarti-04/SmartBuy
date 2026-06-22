@@ -6,7 +6,7 @@ import CompareDrawer from './components/CompareDrawer';
 import AgentPanel from './components/AgentPanel';
 import SkeletonLoader from './components/SkeletonLoader';
 import ErrorBoundary from './components/ErrorBoundary';
-import { parseAgentResponse } from './utils/parseResponse';
+import { parseAgentResponse, getUnavailablePlatforms } from './utils/parseResponse';
 
 // ================= MODULE SCOPED CONSTANTS =================
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -18,7 +18,8 @@ const initialState = {
   results: [],
   compareList: [],
   queryHistory: [],
-  error: null
+  error: null,
+  unavailablePlatforms: []
 };
 
 // ================= REDUCER SETUP =================
@@ -35,7 +36,8 @@ function appReducer(state, action) {
         city: action.payload.city,
         isLoading: true,
         error: null,
-        results: []
+        results: [],
+        unavailablePlatforms: []
       };
     case 'SEARCH_SUCCESS':
       const newHistoryItem = {
@@ -48,6 +50,7 @@ function appReducer(state, action) {
         ...state,
         isLoading: false,
         results: action.payload.products,
+        unavailablePlatforms: action.payload.unavailablePlatforms || [],
         queryHistory: [newHistoryItem, ...state.queryHistory]
       };
     case 'SEARCH_FAILURE':
@@ -162,9 +165,14 @@ function MainApp() {
           payload: { error: `The agent returned an answer, but we couldn't parse structured product cards from it.` }
         });
       } else {
+        const downPlatforms = getUnavailablePlatforms(rawText);
         dispatch({
           type: 'SEARCH_SUCCESS',
-          payload: { products: parsedProducts, rawResult: rawText }
+          payload: { 
+            products: parsedProducts, 
+            rawResult: rawText,
+            unavailablePlatforms: downPlatforms
+          }
         });
       }
 
@@ -253,6 +261,30 @@ function MainApp() {
         {/* Results layout */}
         {!state.isLoading && !state.error && state.results.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {state.unavailablePlatforms && state.unavailablePlatforms.length > 0 && (
+              <div className="platform-warning-banner" style={{
+                backgroundColor: 'rgba(239, 68, 68, 0.08)',
+                border: '1px solid rgba(239, 68, 68, 0.2)',
+                borderRadius: '12px',
+                padding: '14px 20px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                color: '#B91C1C',
+                fontSize: '14px',
+                fontWeight: '600'
+              }}>
+                <span style={{ fontSize: '18px' }}>⚠️</span>
+                <div>
+                  <strong>Platform Status:</strong> {state.unavailablePlatforms.map(p => {
+                    if (p === 'instamart') return 'Swiggy Instamart';
+                    if (p === 'zepto') return 'Zepto';
+                    if (p === 'blinkit') return 'Blinkit';
+                    return p.charAt(0).toUpperCase() + p.slice(1);
+                  }).join(', ')} is down in {state.city}. Comparisons will exclude results from this platform.
+                </div>
+              </div>
+            )}
             <div className="results-header-container">
               <div>
                 <h2 className="results-title">

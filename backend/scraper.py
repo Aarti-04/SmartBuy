@@ -158,91 +158,112 @@ async def search_instamart(query: str, city: str = "Mumbai") -> List[Dict[str, A
     Search for products on Swiggy Instamart.
     Includes customized anti-bot measures (Stealth config), location selection, and fallback selectors.
     """
-    retries = 3
+    retries = 2
     backoff = 2.0
     
     for attempt in range(retries):
         context = None
         page = None
         try:
-            browser = await BrowserManager.get_browser()
-            context, page = await create_stealth_page(browser)
-            
-            logger.info(f"Opening Swiggy homepage (Attempt {attempt+1}/{retries})...")
-            await page.goto(INSTAMART_BASE, wait_until="domcontentloaded", timeout=15000)
-            await random_delay(1.0, 2.5)
-            
-            # Configure the location modal if visible
-            await handle_location_modal(page, city)
-            
-            # Navigate to Instamart Search
-            search_url = f"{INSTAMART_BASE}/search?query={urllib.parse.quote(query)}"
-            logger.info(f"Searching for products via: {search_url}")
-            await page.goto(search_url, wait_until="domcontentloaded", timeout=15000)
-            await random_delay(1.5, 3.0)
-            
-            # Combined check for standard and fallback selectors in parallel with 6s timeout
-            combined_card_sel = '[data-testid="item-collection-card-full"], div[class*="_3Rr1X"], div[class*="ProductCard"]'
-            try:
-                await page.wait_for_selector(combined_card_sel, timeout=6000)
-            except Exception:
-                logger.warning("Product card selectors not found. Proceeding to evaluation...")
-            
-            # Extract structured information from the page DOM
-            products = await page.evaluate("""
-            () => {
-                // Try to locate parent containers first
-                let containers = document.querySelectorAll('div._3Rr1X');
-                if (containers.length === 0) {
-                    // Fallback to cards directly
+            async def run_attempt():
+                nonlocal context, page
+                browser = await BrowserManager.get_browser()
+                context, page = await create_stealth_page(browser)
+                
+                logger.info(f"Opening Swiggy homepage (Attempt {attempt+1}/{retries})...")
+                await page.goto(INSTAMART_BASE, wait_until="domcontentloaded", timeout=15000)
+                await random_delay(1.0, 2.5)
+                
+                # Configure the location modal if visible
+                await handle_location_modal(page, city)
+                
+                # Navigate to Instamart Search
+                search_url = f"{INSTAMART_BASE}/search?query={urllib.parse.quote(query)}"
+                logger.info(f"Searching for products via: {search_url}")
+                await page.goto(search_url, wait_until="domcontentloaded", timeout=15000)
+                await random_delay(1.5, 3.0)
+                
+                # Combined check for standard and fallback selectors in parallel with 6s timeout
+                combined_card_sel = '[data-testid="item-collection-card-full"], div[class*="_3Rr1X"], div[class*="ProductCard"]'
+                try:
+                    await page.wait_for_selector(combined_card_sel, timeout=6000)
+                except Exception as e:
+                    logger.warning("Product card selectors not found. Skipping evaluate and retrying...")
+                    raise e
+                
+                # Extract structured information from the page DOM
+                products = await page.evaluate("""
+                () => {
+                    // Helper to find text by selector list in an element or its ancestors/descendants
+                    const findText = (el, selectors) => {
+                        for (const sel of selectors) {
+                            const found = el.querySelector(sel);
+                            if (found && found.innerText.trim()) {
+                                return found.innerText.trim();
+                            }
+                        }
+                        if (el.parentElement) {
+                            for (const sel of selectors) {
+                                const found = el.parentElement.querySelector(sel);
+                                if (found && found.innerText.trim()) {
+                                    return found.innerText.trim();
+                                }
+                            }
+                        }
+                        return null;
+                    };
+
+                    // Try finding cards by stable testid first
                     let cards = document.querySelectorAll('[data-testid="item-collection-card-full"]');
+                    let isDirectCard = true;
+                    
                     if (cards.length === 0) {
-                        cards = document.querySelectorAll("div[class*='ProductCard']");
+                        // Fallback to parent container
+                        cards = document.querySelectorAll('div._3Rr1X');
+                        isDirectCard = false;
                     }
-                    return Array.from(cards).slice(0, 10).map(card => {
-                        const nameEl = card.querySelector('div[class*="dNVSmW"]') || card.querySelector('div.sc-gEvEer:nth-child(3)') || card.querySelector('div');
-                        const descEl = card.querySelector('div[class*="qCfSW"]') || card.querySelector('div.sc-gEvEer:nth-child(4)');
-                        const name = nameEl ? nameEl.innerText.trim() : "";
+                    if (cards.length === 0) {
+                        // Fallback to class containing ProductCard
+                        cards = document.querySelectorAll("div[class*='ProductCard']");
+                        isDirectCard = false;
+                    }
+
+                    return Array.from(cards).slice(0, 10).map(item => {
+                        let card = item;
+                        let container = item;
+                        
+                        if (isDirectCard) {
+                            container = item.closest('div._3Rr1X') || item.parentElement || item;
+                        } else {
+                            card = item.querySelector('[data-testid="item-collection-card-full"]') || item;
+                        }
+
+                        // Selectors list
+                        const nameSelectors = ['div[class*="dNVSmW"]', 'div.sc-gEvEer:nth-child(3)', 'div[class*="name"]', 'div'];
+                        const descSelectors = ['div[class*="qCfSW"]', 'div.sc-gEvEer:nth-child(4)', 'div[class*="description"]', 'div[class*="desc"]'];
+                        const qtySelectors = ['div[class*="bCqPoH"]', 'div[class*="_3wq_F"]', 'div[class*="qty"]', 'div[class*="quantity"]', 'div[class*="weight"]'];
+                        const priceSelectors = ['div[class*="iQcBUp"]', 'div[class*="_2jn41"]', 'span[class*="price"]', 'div[class*="price"]'];
+
+                        const name = findText(card, nameSelectors) || "Unknown Product";
+                        const description = findText(card, descSelectors) || "";
+                        const price = findText(container, priceSelectors) || findText(card, priceSelectors) || "N/A";
+                        const quantity = findText(container, qtySelectors) || findText(card, qtySelectors) || "N/A";
+                        const imgEl = card.querySelector('img');
+                        
                         return {
                             name: name,
-                            price: "N/A",
-                            quantity: "N/A",
-                            description: descEl ? descEl.innerText.trim() : "",
-                            image: card.querySelector('img')?.src || null,
+                            price: price,
+                            quantity: quantity,
+                            description: description,
+                            image: imgEl ? imgEl.src : null,
                             url: `https://www.swiggy.com/instamart/search?query=${encodeURIComponent(name)}`
                         };
                     });
                 }
-                
-                return Array.from(containers).slice(0, 10).map(container => {
-                    const card = container.querySelector('[data-testid="item-collection-card-full"]');
-                    if (!card) return null;
-                    
-                    // Extract name, description, image
-                    const nameEl = card.querySelector('div[class*="dNVSmW"]') || card.querySelector('div.sc-gEvEer:nth-child(3)');
-                    const descEl = card.querySelector('div[class*="qCfSW"]') || card.querySelector('div.sc-gEvEer:nth-child(4)');
-                    const imgEl = card.querySelector('img');
-                    
-                    // Extract quantity, price from parent container _3dcA8
-                    const qtyEl = container.querySelector('div[class*="bCqPoH"]') || container.querySelector('div[class*="_3wq_F"]');
-                    const priceEl = container.querySelector('div[class*="iQcBUp"]') || container.querySelector('div[class*="_2jn41"]');
-                    
-                    const name = nameEl ? nameEl.innerText.trim() : "Unknown Product";
-                    const price = priceEl ? priceEl.innerText.trim() : "N/A";
-                    const quantity = qtyEl ? qtyEl.innerText.trim() : "N/A";
-                    const description = descEl ? descEl.innerText.trim() : "";
-                    
-                    return {
-                        name: name,
-                        price: price,
-                        quantity: quantity,
-                        description: description,
-                        image: imgEl ? imgEl.src : null,
-                        url: `https://www.swiggy.com/instamart/search?query=${encodeURIComponent(name)}`
-                    };
-                }).filter(Boolean);
-            }
-            """)
+                """)
+                return products
+
+            products = await asyncio.wait_for(run_attempt(), timeout=12.0)
             
             valid_products = [p for p in products if p.get('name')]
             if valid_products:
@@ -251,14 +272,10 @@ async def search_instamart(query: str, city: str = "Mumbai") -> List[Dict[str, A
             else:
                 logger.warning("Scrape completed, but 0 valid products extracted.")
                 
+        except asyncio.TimeoutError as te:
+            logger.error(f"Scrape attempt {attempt+1} timed out (12s overall limit exceeded): {te}")
         except Exception as e:
             logger.error(f"Error on scrape attempt {attempt+1}: {e}")
-            if attempt < retries - 1:
-                sleep_time = backoff * (2 ** attempt)
-                logger.info(f"Retrying in {sleep_time} seconds...")
-                await asyncio.sleep(sleep_time)
-            else:
-                logger.error("All scraper retry attempts exhausted.")
         finally:
             if page:
                 try:
@@ -270,6 +287,13 @@ async def search_instamart(query: str, city: str = "Mumbai") -> List[Dict[str, A
                     await context.close()
                 except Exception:
                     pass
+                
+        if attempt < retries - 1:
+            sleep_time = backoff * (2 ** attempt)
+            logger.info(f"Retrying in {sleep_time} seconds...")
+            await asyncio.sleep(sleep_time)
+        else:
+            logger.error("All scraper retry attempts exhausted.")
                 
     return []
 

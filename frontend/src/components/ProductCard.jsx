@@ -88,12 +88,18 @@ function ProductCard({
           {/* Product Details Section */}
           <div className="product-card-details">
             {/* Platform Tag */}
-            <div className="platform-tag">
-              <span className="platform-dot" style={{ backgroundColor: config.dotColor }} />
-              <span className="platform-label">
-                {product.platform === 'instamart' ? 'Swiggy Instamart' : config.label}
-              </span>
-            </div>
+            {product.platform === 'blinkit' ? (
+              <div className="platform-badge-blinkit" style={{ backgroundColor: '#F9C005', color: '#1a1a1a', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '800', display: 'inline-block', marginBottom: '6px', width: 'fit-content' }}>
+                Blinkit
+              </div>
+            ) : (
+              <div className="platform-tag">
+                <span className="platform-dot" style={{ backgroundColor: config.dotColor }} />
+                <span className="platform-label">
+                  {product.platform === 'instamart' ? 'Swiggy Instamart' : config.label}
+                </span>
+              </div>
+            )}
 
             {/* Product Name */}
             <h3 className="product-name-heading" title={product.name}>
@@ -237,13 +243,40 @@ function ProductCard({
                 </div>
               )}
 
-              {/* Blinkit Locked Row */}
-              <div className="price-row disabled">
-                <span className="price-row-platform">Blinkit</span>
-                <span style={{ fontSize: '12px', fontWeight: 600 }}>
-                  🔒 Soon
-                </span>
-              </div>
+              {/* Blinkit Row */}
+              {product.blinkitPrice !== undefined ? (
+                <div className="price-row active">
+                  <span className="price-row-platform">Blinkit</span>
+                  <div className="price-row-values">
+                    <span className="price-row-value">
+                      ₹{product.blinkitPrice}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        trackRedirect({
+                          productName: product.name,
+                          platform: 'blinkit',
+                          price: product.blinkitPrice,
+                          city: product.city || 'Mumbai'
+                        });
+                        window.open(product.blinkitUrl, '_blank', 'noopener,noreferrer');
+                      }}
+                      className="btn-buy-small"
+                      style={{ backgroundColor: '#F9C005', color: '#1a1a1a' }}
+                    >
+                      Buy ↗
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="price-row disabled">
+                  <span className="price-row-platform">Blinkit</span>
+                  <span style={{ fontSize: '12px', fontWeight: 600 }}>
+                    Not Available
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Best price indicator */}
