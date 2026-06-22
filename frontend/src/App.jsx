@@ -22,6 +22,10 @@ const initialState = {
 };
 
 // ================= REDUCER SETUP =================
+/**
+ * @param {any} state
+ * @param {any} action
+ */
 function appReducer(state, action) {
   switch (action.type) {
     case 'START_SEARCH':

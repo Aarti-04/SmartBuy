@@ -40,6 +40,8 @@ async def get_cached(key: str) -> Optional[str]:
         value = await client.get(key)
         if value:
             logger.info(f"Cache HIT for key: {key}")
+            if isinstance(value, bytes):
+                return value.decode("utf-8")
             return value
         logger.info(f"Cache MISS for key: {key}")
         return None

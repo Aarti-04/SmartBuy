@@ -143,7 +143,7 @@ async def run_agent(query: str) -> str:
             logger.info("Agent created")
 
             # Invoke the LangGraph compiled state graph
-            result = await executor.ainvoke({"messages": [("user", query)]})
+            result = await executor.ainvoke({"messages": [("user", query)]})  # type: ignore[call-overload]
             logger.info("Agent invoked successfully")
             logger.info(f"Agent execution succeeded using model: {model_name}")
             
