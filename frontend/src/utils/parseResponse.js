@@ -44,6 +44,15 @@ export function parseAgentResponse(text) {
       currentPlatform = 'zepto';
       return;
     }
+    if (upperLine.includes('BLINKIT') && !/^\d+[\.\)]/.test(trimmed)) {
+      currentPlatform = 'blinkit';
+      return;
+    }
+
+    // Skip section contents if they represent unavailability
+    if (trimmed.includes('⚠️') || trimmed.toLowerCase().includes('unavailable')) {
+      return;
+    }
 
     const match = trimmed.match(regex);
     if (match) {
@@ -103,12 +112,19 @@ export function parseAgentResponse(text) {
 
     // 2. Process each group to find the best price and platform winner
     Object.values(groups).forEach(group => {
-      const minPrice = Math.min(...group.map(p => p.price));
+      const prices = group.map(p => p.price);
+      const minPrice = Math.min(...prices);
+      const maxPrice = Math.max(...prices);
+      
       const hasInstamart = group.some(p => p.platform === 'instamart');
       const hasZepto = group.some(p => p.platform === 'zepto');
+      const hasBlinkit = group.some(p => p.platform === 'blinkit');
       
       const imProd = group.find(p => p.platform === 'instamart');
       const zProd = group.find(p => p.platform === 'zepto');
+      const bProd = group.find(p => p.platform === 'blinkit');
+
+      const matchedPlatformsCount = [hasInstamart, hasZepto, hasBlinkit].filter(Boolean).length;
 
       group.forEach(p => {
         if (imProd) {
@@ -121,15 +137,27 @@ export function parseAgentResponse(text) {
           p.zeptoUrl = zProd.platformUrl;
           p.zeptoImage = zProd.imageUrl;
         }
+        if (bProd) {
+          p.blinkitPrice = bProd.price;
+          p.blinkitUrl = bProd.platformUrl;
+          p.blinkitImage = bProd.imageUrl;
+        }
 
         if (p.price === minPrice) {
           p.isBestPrice = true;
-          if (hasInstamart && hasZepto) {
+          if (matchedPlatformsCount >= 2) {
             p.platformWinner = true;
           }
         } else {
           p.isBestPrice = false;
           p.platformWinner = false;
+        }
+
+        // Add savingsAmount field showing the difference vs the most expensive matched option
+        if (matchedPlatformsCount >= 2) {
+          p.savingsAmount = maxPrice - p.price;
+        } else {
+          p.savingsAmount = 0;
         }
       });
     });
