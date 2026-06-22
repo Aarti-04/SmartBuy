@@ -2,7 +2,7 @@
 
 SmartBuy is an AI-powered shopping assistant that helps users find the best deals across quick-commerce platforms by searching, scraping, matching, and comparing products in real time.
 
-The platform currently supports **Swiggy Instamart** and **Zepto**, with integrations for **Blinkit** and other grocery delivery platforms under development.
+The platform currently supports **Swiggy Instamart**, **Zepto**, and **Blinkit**, with integrations for other grocery delivery platforms under development.
 
 ---
 
@@ -110,6 +110,7 @@ Create a `.env` file in the project root:
 
 ```env
 GEMINI_API_KEY=your_gemini_api_key
+APIFY_TOKEN=your_apify_token
 ```
 
 ### Start the Application
@@ -201,7 +202,6 @@ npm run dev
 
 ## 🔮 Future Enhancements
 
-* Blinkit integration
 * Persistent database support
 * Price history tracking
 * Product availability monitoring

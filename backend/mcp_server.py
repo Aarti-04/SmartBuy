@@ -222,7 +222,7 @@ async def search_all_platforms(query: str, city: str = "Mumbai") -> str:
     labels = ["INSTAMART", "ZEPTO", "BLINKIT"]
     sections = []
     for label, result in zip(labels, results):
-        if isinstance(result, Exception):
+        if isinstance(result, BaseException):
             logger.error(f"{label} tool raised: {result}")
             sections.append(f"**{label}:**\n⚠️ Currently unavailable for {city}")
         elif not result or result in ("No products found.", "BLINKIT_UNAVAILABLE") or "unavailable" in result.lower():
