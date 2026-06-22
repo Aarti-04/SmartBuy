@@ -261,3 +261,36 @@ function calculateUnitPrice(price, quantity) {
   // Generic unit fallback
   return `₹${Math.round(price / num)}/${unit}`;
 }
+
+/**
+ * Scans the raw agent text to detect if any of the quick-commerce platforms returned down/unavailable.
+ */
+export function getUnavailablePlatforms(text) {
+  if (!text || typeof text !== 'string') return [];
+  
+  const unavailable = [];
+  const lines = text.split('\n');
+  let currentPlatform = 'instamart';
+  
+  lines.forEach(line => {
+    const trimmed = line.trim();
+    const upperLine = trimmed.toUpperCase();
+    
+    if (upperLine.includes('INSTAMART') && !/^\d+[\.\)]/.test(trimmed)) {
+      currentPlatform = 'instamart';
+    } else if (upperLine.includes('ZEPTO') && !/^\d+[\.\)]/.test(trimmed)) {
+      currentPlatform = 'zepto';
+    } else if (upperLine.includes('BLINKIT') && !/^\d+[\.\)]/.test(trimmed)) {
+      currentPlatform = 'blinkit';
+    }
+    
+    if (trimmed.includes('⚠️') || trimmed.toLowerCase().includes('unavailable')) {
+      if (!unavailable.includes(currentPlatform)) {
+        unavailable.push(currentPlatform);
+      }
+    }
+  });
+  
+  return unavailable;
+}
+

@@ -165,55 +165,43 @@ function ProductGrid({
                     </div>
                   </div>
 
-                  {/* Side-by-side cards (3 columns) */}
+                  {/* Side-by-side cards (2 or 3 columns dynamically) */}
                   <div className="compare-row-sides-3col" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
                     {/* Instamart Column */}
-                    <div className="compare-col-instamart" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
-                      {imProd ? (
+                    {imProd && (
+                      <div className="compare-col-instamart" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
                         <ProductCard
                           product={imProd}
                           onAddToCompare={onAddToCompare}
                           onRemoveFromCompare={onRemoveFromCompare}
                           isAddedToCompare={compareList.some((item) => item.id === imProd.id)}
                         />
-                      ) : (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '300px', width: '100%', border: '2px dashed var(--border)', borderRadius: '16px', padding: '24px', color: 'var(--text-muted)', fontSize: '14px', fontWeight: 600, backgroundColor: '#FAFBFD' }}>
-                          Not available
-                        </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
 
                     {/* Zepto Column */}
-                    <div className="compare-col-zepto" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
-                      {zProd ? (
+                    {zProd && (
+                      <div className="compare-col-zepto" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
                         <ProductCard
                           product={zProd}
                           onAddToCompare={onAddToCompare}
                           onRemoveFromCompare={onRemoveFromCompare}
                           isAddedToCompare={compareList.some((item) => item.id === zProd.id)}
                         />
-                      ) : (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '300px', width: '100%', border: '2px dashed var(--border)', borderRadius: '16px', padding: '24px', color: 'var(--text-muted)', fontSize: '14px', fontWeight: 600, backgroundColor: '#FAFBFD' }}>
-                          Not available
-                        </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
 
                     {/* Blinkit Column */}
-                    <div className="compare-col-blinkit" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
-                      {bProd ? (
+                    {bProd && (
+                      <div className="compare-col-blinkit" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
                         <ProductCard
                           product={bProd}
                           onAddToCompare={onAddToCompare}
                           onRemoveFromCompare={onRemoveFromCompare}
                           isAddedToCompare={compareList.some((item) => item.id === bProd.id)}
                         />
-                      ) : (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '300px', width: '100%', border: '2px dashed var(--border)', borderRadius: '16px', padding: '24px', color: 'var(--text-muted)', fontSize: '14px', fontWeight: 600, backgroundColor: '#FAFBFD' }}>
-                          Not available
-                        </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               );

@@ -51,8 +51,8 @@ async def search_zepto(query: str, city: str = "Mumbai") -> str:
         "locations": [city]
     }
     
-    retries = 3
-    backoff = 2.0
+    retries = 2
+    backoff = 1.5
     
     for attempt in range(retries):
         try:
@@ -112,7 +112,7 @@ async def search_zepto(query: str, city: str = "Mumbai") -> str:
         except Exception as e:
             logger.error(f"Error calling Apify Zepto scraper on attempt {attempt+1}: {e}")
             if attempt < retries - 1:
-                sleep_time = backoff * (2 ** attempt)
+                sleep_time = backoff
                 logger.info(f"Retrying in {sleep_time} seconds...")
                 await asyncio.sleep(sleep_time)
             else:
@@ -140,8 +140,8 @@ async def search_blinkit(query: str, city: str = "Mumbai") -> str:
         "locations": [city]
     }
     
-    retries = 3
-    backoff = 2.0
+    retries = 2
+    backoff = 1.5
     
     for attempt in range(retries):
         try:
@@ -192,13 +192,45 @@ async def search_blinkit(query: str, city: str = "Mumbai") -> str:
         except Exception as e:
             logger.error(f"Error calling Apify Blinkit scraper on attempt {attempt+1}: {e}")
             if attempt < retries - 1:
-                sleep_time = backoff * (2 ** attempt)
+                sleep_time = backoff
                 logger.info(f"Retrying in {sleep_time} seconds...")
                 await asyncio.sleep(sleep_time)
             else:
                 logger.error("All Apify Blinkit scraper retry attempts exhausted.")
                 
     return "BLINKIT_UNAVAILABLE"
+
+async def with_timeout(coro, seconds, label):
+    try:
+        return await asyncio.wait_for(coro, timeout=seconds)
+    except asyncio.TimeoutError:
+        logger.warning(f"{label} timed out after {seconds}s")
+        return "⚠️ Currently unavailable for city (timed out)"
+
+@mcp.tool()
+async def search_all_platforms(query: str, city: str = "Mumbai") -> str:
+    """Search Instamart, Zepto, and Blinkit simultaneously and return all 
+    three platform sections in one formatted response."""
+    
+    results = await asyncio.gather(
+        with_timeout(search_product(query, city), 45, "INSTAMART"),
+        with_timeout(search_zepto(query, city), 45, "ZEPTO"),
+        with_timeout(search_blinkit(query, city), 45, "BLINKIT"),
+        return_exceptions=True
+    )
+    
+    labels = ["INSTAMART", "ZEPTO", "BLINKIT"]
+    sections = []
+    for label, result in zip(labels, results):
+        if isinstance(result, Exception):
+            logger.error(f"{label} tool raised: {result}")
+            sections.append(f"**{label}:**\n⚠️ Currently unavailable for {city}")
+        elif not result or result in ("No products found.", "BLINKIT_UNAVAILABLE") or "unavailable" in result.lower():
+            sections.append(f"**{label}:**\n⚠️ Currently unavailable for {city}")
+        else:
+            sections.append(f"**{label}:**\n{result}")
+    
+    return "\n\n".join(sections)
 
 @mcp.tool()
 async def get_product_details(product_url: str) -> str:
