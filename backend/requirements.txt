@@ -13,5 +13,6 @@ pydantic>=2.0
 python-dotenv>=1.0.0
 httpx>=0.24.0
 langchain-anthropic
+langchain-openai
 ruff>=0.1.0
 mypy>=1.0.0

@@ -4,6 +4,7 @@ import sys
 import logging
 import asyncio
 from contextlib import AsyncExitStack
+from typing import Any
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -17,7 +18,7 @@ from langchain.agents import create_agent
 logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """You are SmartBuy, a helpful grocery shopping assistant.
-When a user searches for a product, call the search_all_platforms tool ONCE with the query and city. It already returns all three platform sections (**INSTAMART:**, **ZEPTO:**, **BLINKIT:**) pre-formatted. Do not call search_product, search_zepto, or search_blinkit individually — always use search_all_platforms. Return its output to the user with minimal modification, preserving the exact section headers and product list formatting it provides.
+When a user searches for a product, call the search_all_platforms tool ONCE with the query and city. It already returns all three platform sections (**INSTAMART:**, **ZEPTO:**, **BLINKIT:**) pre-formatted. Do not call search_instamart, search_zepto, or search_blinkit individually — always use search_all_platforms. Return its output to the user with minimal modification, preserving the exact section headers and product list formatting it provides.
 Answer the user's request based on the tool execution output."""
 
 # Fallback Gemini models as requested by the user
@@ -117,12 +118,14 @@ async def run_agent(query: str) -> str:
         logger.info(f"Attempting to run agent using {llm_provider} model: {model_name}")
         try:
             # Initialize the LLM
+            llm: Any
             if llm_provider == "gemini":
                 from langchain_google_genai import ChatGoogleGenerativeAI
                 llm = ChatGoogleGenerativeAI(model=model_name, temperature=0)
             else:
                 from langchain_openai import ChatOpenAI
-                llm = ChatOpenAI(model=model_name, temperature=0)
+                api_key = os.getenv("OPENAI_API_KEY") or os.getenv("open_AI_API_KEY")
+                llm = ChatOpenAI(model=model_name, temperature=0, api_key=api_key)  # type: ignore[arg-type]
             
             logger.info("LLM created")
 

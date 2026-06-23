@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
 const STATUS_TEXTS = [
-  '🔍 Searching InstaMART & Zepto...',
+  '🔍 Searching InstaMART, Zepto & Blinkit...',
   '🤖 Agent analysing results...',
   '📦 Fetching product details...',
   '✅ Almost done...'
@@ -52,7 +52,7 @@ export default function SkeletonLoader() {
           {STATUS_TEXTS[statusIndex]}
         </div>
         <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-          Spawning headless Playwright scraper. This can take up to 10-15 seconds.
+          Spawning quick-commerce scrapers. This can take up to 15-30 seconds.
         </p>
       </div>
 

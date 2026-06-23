@@ -2,23 +2,24 @@
 services:
   redis:
     image: redis:7-alpine
-    ports: ["6380:6379"]
-  
+    ports: [ "6380:6379" ]
+
   backend:
     build: ./backend
-    ports: ["8000:8000"]
-    depends_on: [redis]
+    ports: [ "8000:8000" ]
+    depends_on: [ redis ]
     env_file: .env
     environment:
       REDIS_URL: redis://redis:6379
       APIFY_TOKEN: ${APIFY_TOKEN}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
     volumes:
       - ./backend:/app
-  
+
   frontend:
     build: ./frontend
-    ports: ["5173:5173"]
-    depends_on: [backend]
+    ports: [ "5173:5173" ]
+    depends_on: [ backend ]
     volumes:
       - ./frontend:/app
       - /app/node_modules

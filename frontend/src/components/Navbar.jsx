@@ -14,10 +14,17 @@ function Navbar({ isOnline, devMode, onToggleDevMode }) {
       {/* Platform Statuses */}
       <div className="status-pills">
         {/* InstaMART Active Pill */}
-        <div className={`status-pill ${isOnline ? 'online' : 'offline'}`}>
-          <span className={`status-dot ${isOnline ? 'online' : 'offline'}`} />
-          <span>InstaMART {isOnline ? 'Live' : 'Checking...'}</span>
-        </div>
+        {isOnline ? (
+          <div className="status-pill online" style={{ backgroundColor: '#FFF5F0', border: '1px solid rgba(255, 82, 0, 0.2)', color: '#FF5200' }}>
+            <span className="status-dot online" style={{ backgroundColor: '#FF5200', boxShadow: '0 0 8px #FF5200' }} />
+            <span>InstaMART Live</span>
+          </div>
+        ) : (
+          <div className="status-pill offline">
+            <span className="status-dot offline" />
+            <span>InstaMART Offline</span>
+          </div>
+        )}
 
         {/* Zepto Live Pill */}
         <div className="status-pill online" style={{ backgroundColor: '#F3E8FF', border: '1px solid rgba(139, 92, 246, 0.2)', color: '#6D28D9' }}>
@@ -26,8 +33,8 @@ function Navbar({ isOnline, devMode, onToggleDevMode }) {
         </div>
 
         {/* Blinkit Live Pill */}
-        <div className="status-pill online" style={{ backgroundColor: '#FEF3C7', border: '1px solid rgba(245, 158, 11, 0.2)', color: '#B45309' }}>
-          <span className="status-dot online" style={{ backgroundColor: '#F59E0B', boxShadow: '0 0 8px #F59E0B' }} />
+        <div className="status-pill online" style={{ backgroundColor: '#FFFDF0', border: '1px solid rgba(249, 192, 5, 0.3)', color: '#713F12' }}>
+          <span className="status-dot online" style={{ backgroundColor: '#F9C005', boxShadow: '0 0 8px #F9C005' }} />
           <span>Blinkit Live</span>
         </div>
 
