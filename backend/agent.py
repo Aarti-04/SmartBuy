@@ -4,7 +4,6 @@ import sys
 import logging
 import asyncio
 from contextlib import AsyncExitStack
-from typing import Any
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -118,14 +117,12 @@ async def run_agent(query: str) -> str:
         logger.info(f"Attempting to run agent using {llm_provider} model: {model_name}")
         try:
             # Initialize the LLM
-            llm: Any
             if llm_provider == "gemini":
                 from langchain_google_genai import ChatGoogleGenerativeAI
                 llm = ChatGoogleGenerativeAI(model=model_name, temperature=0)
             else:
                 from langchain_openai import ChatOpenAI
-                api_key = os.getenv("OPENAI_API_KEY") or os.getenv("open_AI_API_KEY")
-                llm = ChatOpenAI(model=model_name, temperature=0, api_key=api_key)  # type: ignore[arg-type]
+                llm = ChatOpenAI(model=model_name, temperature=0)
             
             logger.info("LLM created")
 
