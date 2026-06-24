@@ -59,9 +59,9 @@ function CompareDrawer({
             <thead>
               <tr style={{ borderBottom: '2px solid var(--border)' }}>
                 <th className="compare-table-header-details">Product Details</th>
-                <th className="compare-table-header-instamart">Swiggy Instamart</th>
+                <th className="compare-table-header-instamart" style={{ color: '#FF5200', fontWeight: 700 }}>Swiggy Instamart</th>
                 <th className="compare-table-header-zepto" style={{ color: '#8B5CF6', fontWeight: 700 }}>Zepto</th>
-                <th className="compare-table-header-blinkit" style={{ color: '#F59E0B', fontWeight: 700 }}>Blinkit</th>
+                <th className="compare-table-header-blinkit" style={{ color: '#F9C005', fontWeight: 700 }}>Blinkit</th>
                 <th style={{ width: '60px' }}></th>
               </tr>
             </thead>
@@ -126,7 +126,16 @@ function CompareDrawer({
                       <div className="product-cell-detail">
                         <span
                           className="product-cell-emoji"
-                          style={{ background: product.gradient, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          style={{ 
+                            background: product.gradient, 
+                            overflow: 'hidden', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center',
+                            width: '40px',
+                            height: '40px',
+                            flexShrink: 0
+                          }}
                         >
                           {product.imageUrl ? (
                             <img

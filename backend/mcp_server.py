@@ -11,13 +11,13 @@ import os
 import asyncio
 import urllib.parse
 from fastmcp import FastMCP
-from scraper import search_instamart, get_product_details as scrape_product_details
+from scraper import search_instamart as scrape_instamart, get_product_details as scrape_product_details
 from cache import get_cached, set_cache
 
 mcp = FastMCP("SmartBuy Agent Tools")
 
 @mcp.tool()
-async def search_product(query: str, city: str = "Mumbai") -> str:
+async def search_instamart(query: str, city: str = "Mumbai") -> str:
     """Search for a grocery product on InstaMART by name.
     Returns a list of matching products with price and quantity."""
     
@@ -26,7 +26,7 @@ async def search_product(query: str, city: str = "Mumbai") -> str:
     if cached:
         return cached
     
-    results = await search_instamart(query, city)
+    results = await scrape_instamart(query, city)
     result_str = format_products(results)
     await set_cache(cache_key, result_str, ttl=900)  # 15 min
     return result_str
@@ -213,7 +213,7 @@ async def search_all_platforms(query: str, city: str = "Mumbai") -> str:
     three platform sections in one formatted response."""
     
     results = await asyncio.gather(
-        with_timeout(search_product(query, city), 45, "INSTAMART"),
+        with_timeout(search_instamart(query, city), 45, "INSTAMART"),
         with_timeout(search_zepto(query, city), 45, "ZEPTO"),
         with_timeout(search_blinkit(query, city), 45, "BLINKIT"),
         return_exceptions=True

@@ -291,7 +291,7 @@ function MainApp() {
                   Results for "{state.query}" in {state.city}
                 </h2>
                 <p className="results-subtitle">
-                  Swiggy Instamart & Zepto quick-commerce scrape results
+                  Swiggy Instamart, Zepto & Blinkit quick-commerce comparison results
                 </p>
               </div>
 
@@ -323,7 +323,7 @@ function MainApp() {
               No products found for "{state.query}"
             </h3>
             <p className="empty-state-text">
-              We checked InstaMART & Zepto in {state.city}. Try searching for common grocery goods or brands.
+              We checked InstaMART, Zepto & Blinkit in {state.city}. Try searching for common grocery goods or brands.
             </p>
 
             <div className="empty-state-suggestions">

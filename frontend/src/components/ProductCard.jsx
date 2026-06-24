@@ -92,12 +92,13 @@ function ProductCard({
               <div className="platform-badge-blinkit" style={{ backgroundColor: '#F9C005', color: '#1a1a1a', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '800', display: 'inline-block', marginBottom: '6px', width: 'fit-content' }}>
                 Blinkit
               </div>
+            ) : product.platform === 'zepto' ? (
+              <div className="platform-badge-zepto" style={{ backgroundColor: '#8B5CF6', color: '#ffffff', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '800', display: 'inline-block', marginBottom: '6px', width: 'fit-content' }}>
+                Zepto
+              </div>
             ) : (
-              <div className="platform-tag">
-                <span className="platform-dot" style={{ backgroundColor: config.dotColor }} />
-                <span className="platform-label">
-                  {product.platform === 'instamart' ? 'Swiggy Instamart' : config.label}
-                </span>
+              <div className="platform-badge-instamart" style={{ backgroundColor: '#FF5200', color: '#ffffff', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '800', display: 'inline-block', marginBottom: '6px', width: 'fit-content' }}>
+                Swiggy Instamart
               </div>
             )}
 
