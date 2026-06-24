@@ -4,6 +4,7 @@ import sys
 import logging
 import asyncio
 from contextlib import AsyncExitStack
+from typing import Any
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -119,7 +120,7 @@ async def run_agent(query: str) -> str:
             # Initialize the LLM
             if llm_provider == "gemini":
                 from langchain_google_genai import ChatGoogleGenerativeAI
-                llm = ChatGoogleGenerativeAI(model=model_name, temperature=0)
+                llm: Any = ChatGoogleGenerativeAI(model=model_name, temperature=0)
             else:
                 from langchain_openai import ChatOpenAI
                 llm = ChatOpenAI(model=model_name, temperature=0)
