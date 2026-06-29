@@ -61,7 +61,7 @@ h1, h2, h3, h4, h5, h6 {
 .hero-container {
   background-color: #F0F7F2;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .hero-grain {
