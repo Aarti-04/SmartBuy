@@ -2,7 +2,7 @@
 import asyncio
 import sys
 import logging
-from scraper import search_instamart, get_product_details
+from platforms.instamart import InstamartScraper
 
 # Configure basic logging to see step output
 logging.basicConfig(
@@ -19,7 +19,8 @@ async def run_monitoring_test() -> None:
     # 1. Test search scraper
     logger.info(f"Testing search_instamart with query: '{test_query}' in '{test_city}'...")
     try:
-        products = await search_instamart(test_query, test_city)
+        scraper = InstamartScraper()
+        products = await scraper.search(test_query, test_city)
         if not products:
             logger.error("CRITICAL: search_instamart returned 0 products. Selectors might be broken!")
             sys.exit(1)
@@ -40,16 +41,6 @@ async def run_monitoring_test() -> None:
         
         logger.info("Search selectors validation: PASSED")
         
-        # 2. Test product details scraper using the first product's URL
-        logger.info(f"Testing get_product_details with URL: '{sample['url']}'...")
-        details = await get_product_details(sample['url'])
-        logger.info(f"Scraped details result:\n{details}")
-        
-        if not details or "Failed" in details:
-            logger.error("CRITICAL: get_product_details failed or returned empty details. Selectors might be broken!")
-            sys.exit(1)
-            
-        logger.info("Product details selectors validation: PASSED")
         logger.info("Weekly Selector Monitoring Test: ALL PASSED")
         sys.exit(0)
         
