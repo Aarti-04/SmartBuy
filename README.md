@@ -21,11 +21,11 @@ Users can search for products using natural language, and SmartBuy will:
 ---
 ## Working of SmartBuy
 
-![alt text](smartbuy_homepage.png)
-![alt text](smartbuy_dove_query.png)
-![alt text](smartbuy_single_platform_dove.png)
-![alt text](smartbuy_fortuneOil_query.png)
-![alt text](smartbuy_fortuneOil_singleplatform.png)
+![alt text](demo/smartbuy_homepage.png)
+![alt text](demo/smartbuy_dove_query.png)
+![alt text](demo/smartbuy_single_platform_dove.png)
+![alt text](demo/smartbuy_fortuneOil_query.png)
+![alt text](demo/smartbuy_fortuneOil_singleplatform.png)
 
 
 ## 🏗️ Architecture
