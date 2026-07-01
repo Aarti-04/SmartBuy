@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from agent import run_agent, get_mcp_manager
 from cache import get_cached, set_cache, close_redis
+from utils import normalize_city
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -53,7 +54,8 @@ class SearchResponse(BaseModel):
 
 @app.post("/search", response_model=SearchResponse)
 async def search_products(req: SearchRequest):
-    cache_key = f"api_search:{req.query.lower().strip()}:{req.city.lower().strip()}"
+    req.city = normalize_city(req.city)
+    cache_key = f"smartbuy:{req.query.lower().strip()}:{req.city.lower().strip()}"
     try:
         cached_val = await get_cached(cache_key)
         if cached_val:

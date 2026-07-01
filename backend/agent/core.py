@@ -1,4 +1,3 @@
-# agent.py
 import os
 import sys
 import logging
@@ -6,24 +5,18 @@ import asyncio
 from contextlib import AsyncExitStack
 from typing import Any
 
-from dotenv import load_dotenv
-load_dotenv()
-
 from langchain_mcp_adapters.tools import load_mcp_tools
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from langchain.agents import create_agent
 
-# Configure logging
+from config import settings
+
 logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """You are SmartBuy, a helpful grocery shopping assistant.
 When a user searches for a product, call the search_all_platforms tool ONCE with the query and city. It already returns all three platform sections (**INSTAMART:**, **ZEPTO:**, **BLINKIT:**) pre-formatted. Do not call search_instamart, search_zepto, or search_blinkit individually — always use search_all_platforms. Return its output to the user with minimal modification, preserving the exact section headers and product list formatting it provides.
 Answer the user's request based on the tool execution output."""
-
-# Fallback Gemini models as requested by the user
-GEMINI_MODELS = ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
-OPENAI_MODELS = ["gpt-4o", "gpt-4o-mini"]
 
 class MCPClientManager:
     def __init__(self, server_params: StdioServerParameters):
@@ -82,11 +75,18 @@ def get_mcp_manager() -> MCPClientManager:
     global _mcp_manager
     if _mcp_manager is None:
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        mcp_server_path = os.path.join(current_dir, "mcp_server.py")
+        backend_dir = os.path.dirname(current_dir)
+        
+        env = os.environ.copy()
+        if "PYTHONPATH" in env:
+            env["PYTHONPATH"] = f"{backend_dir}{os.path.pathsep}{env['PYTHONPATH']}"
+        else:
+            env["PYTHONPATH"] = backend_dir
+
         server_params = StdioServerParameters(
             command=sys.executable,
-            args=[mcp_server_path],
-            env=os.environ.copy()
+            args=["-m", "mcp_app"],
+            env=env
         )
         _mcp_manager = MCPClientManager(server_params)
     return _mcp_manager
@@ -96,12 +96,12 @@ async def run_agent(query: str) -> str:
     Runs the LangChain agent using the persistent MCP client session.
     Iterates through models in fallback order if there are issues executing the LLM.
     """
-    llm_provider = os.getenv("LLM_PROVIDER", "gemini").lower()
+    llm_provider = settings.llm_provider.lower()
     
     if llm_provider == "gemini":
-        models_to_try = GEMINI_MODELS
+        models_to_try = settings.gemini_models
     else:
-        models_to_try = OPENAI_MODELS
+        models_to_try = settings.openai_models
 
     # Get tools and session from persistent manager
     manager = get_mcp_manager()
