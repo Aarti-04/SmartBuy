@@ -5,9 +5,6 @@ SmartBuy is an AI-powered shopping assistant that helps users find the best deal
 The platform currently supports **Swiggy Instamart**, **Zepto**, and **Blinkit**, with integrations for other grocery delivery platforms under development.
 
 ---
-![alt text](smartbuy_homepage.png)
-![alt text](smartbuy_dove_query.png)
-![alt text](smartbuy_single_platform_dove.png)
 
 ## ✨ Overview
 
@@ -22,6 +19,11 @@ Users can search for products using natural language, and SmartBuy will:
 * Recommend the most cost-effective platform for purchase
 
 ---
+## Working of SmartBuy
+
+![alt text](smartbuy_homepage.png)
+![alt text](smartbuy_dove_query.png)
+![alt text](smartbuy_single_platform_dove.png)
 
 ## 🏗️ Architecture
 
