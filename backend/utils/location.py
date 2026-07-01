@@ -1,4 +1,3 @@
-from typing import List, Tuple
 from config import settings
 
 def normalize_city(city: str) -> str:

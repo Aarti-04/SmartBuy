@@ -4,4 +4,4 @@ from fastmcp import FastMCP
 mcp = FastMCP("SmartBuy Agent Tools")
 
 # Import the tools module to trigger decorator tool registration
-from . import tools
+from . import tools  # noqa: F401
