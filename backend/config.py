@@ -1,4 +1,3 @@
-import os
 from typing import List, Tuple
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
