@@ -24,6 +24,9 @@ Users can search for products using natural language, and SmartBuy will:
 ![alt text](smartbuy_homepage.png)
 ![alt text](smartbuy_dove_query.png)
 ![alt text](smartbuy_single_platform_dove.png)
+![alt text](smartbuy_fortuneOil_query.png)
+![alt text](smartbuy_fortuneOil_singleplatform.png)
+
 
 ## 🏗️ Architecture
 
